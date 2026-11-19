@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f5d50">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CDOT Sites">
+<title>CDOT Site Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: desktop = top bar + tabs, list rail beside the map. Phone = bottom tab bar, map or list full-screen, site page as a full-screen sheet */
+  --paper:#f4f6f3; --panel:#ffffff; --ink:#1d2a25; --muted:#5d6b65; --line:#d6ddd8;
+  --accent:#2f5d50; --accent-ink:#ffffff; --water:#2a6f97; --plaza:#8a5a1f;
+  --good:#2e7d4f; --warn:#b7791f; --bad:#b4372f;
+  --display:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Public Sans",Arial,Helvetica,sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#141b18; --panel:#1c2521; --ink:#e4ebe7; --muted:#9aa9a2; --line:#324039;
+  --accent:#6fb09a; --accent-ink:#0f1714; --water:#6db3dc; --plaza:#d9a35b;
+  --good:#5cc08a; --warn:#e2b04f; --bad:#ec7a70; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --paper:#141b18; --panel:#1c2521; --ink:#e4ebe7; --muted:#9aa9a2; --line:#324039;
+  --accent:#6fb09a; --accent-ink:#0f1714; --water:#6db3dc; --plaza:#d9a35b;
+  --good:#5cc08a; --warn:#e2b04f; --bad:#ec7a70; color-scheme:dark;}
+
+/* Leaflet essentials (inlined so the map works where external stylesheets are blocked) */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;-webkit-tap-highlight-color:transparent;outline-offset:1px}
+.leaflet-tile{user-select:none;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important}
+.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}
+.leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
+.leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}
+.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:grab}.leaflet-dragging .leaflet-grab{cursor:move}
+.leaflet-zoom-animated{transform-origin:0 0}.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-bar{box-shadow:0 1px 4px rgba(0,0,0,.3);border-radius:4px}
+.leaflet-bar a{background:var(--panel);color:var(--ink);border-bottom:1px solid var(--line);width:30px;height:30px;line-height:30px;display:block;text-align:center;text-decoration:none;font:bold 18px var(--body)}
+.leaflet-bar a:last-child{border-bottom:none}
+.leaflet-control-attribution{background:rgba(255,255,255,.8);font-size:11px;padding:0 5px;color:#333}
+.leaflet-control-attribution a{color:#2a6f97}
+.leaflet-tooltip{position:absolute;padding:4px 8px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;white-space:nowrap;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.25);font:13px var(--body)}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.45 var(--body);display:flex;flex-direction:column;-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:.01em}
+h2{font-size:1.5rem}h3{font-size:1.15rem}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--water)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header{display:flex;align-items:center;gap:12px;padding:calc(10px + var(--safe-t)) 16px 10px;background:var(--accent);color:var(--accent-ink)}
+header h1{font-size:1.45rem;font-weight:700;flex:1}
+.mode{font-size:.78rem;padding:3px 9px;border-radius:99px;border:1px solid currentColor;opacity:.9;white-space:nowrap}
+nav{display:flex;gap:2px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+nav a{padding:10px 14px;color:var(--muted);text-decoration:none;font-weight:600;white-space:nowrap;border-bottom:3px solid transparent;display:flex;align-items:center;gap:6px}
+nav a svg{width:18px;height:18px;flex:none}
+nav a.on{color:var(--ink);border-color:var(--accent)}
+main{flex:1;min-height:0;display:flex;position:relative}
+.view{display:none;flex:1;min-height:0}
+.view.on{display:flex}
+.scroll{flex:1;overflow:auto;padding:20px 16px 40px;-webkit-overflow-scrolling:touch}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+
+/* Map view */
+#v-map{position:relative}
+.rail{width:370px;flex:none;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);min-height:0}
+.filters{padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;border-bottom:1px solid var(--line)}
+.filters .wide{grid-column:1/-1}
+.filters label{font-size:.75rem;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+input,select,textarea{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-height:40px}
+textarea{min-height:80px;resize:vertical}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 12px;font-size:.8rem;color:var(--muted);border-bottom:1px solid var(--line);align-items:center}
+.legend label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.legend input{width:auto;min-height:0}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px;border:2px solid;flex:none}
+.listhead{padding:8px 12px;font-size:.85rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+#siteList{flex:1;overflow:auto;list-style:none;margin:0;padding:0;-webkit-overflow-scrolling:touch}
+#siteList li{padding:11px 12px;border-top:1px solid var(--line);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+#siteList li:hover,#siteList li.sel{background:var(--paper)}
+#siteList .nm{font-weight:600}
+#siteList .meta{font-size:.8rem;color:var(--muted)}
+#siteList .dist{margin-left:auto;font-size:.8rem;color:var(--muted);white-space:nowrap}
+#map{flex:1;min-height:200px;background:var(--paper)}
+.mapbtns{position:absolute;right:12px;top:12px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+.mapbtns button{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;min-height:40px}
+.notiles{position:absolute;right:12px;bottom:12px;z-index:900;background:var(--panel);border:1px solid var(--line);padding:6px 10px;border-radius:6px;font-size:.8rem;color:var(--muted);max-width:280px;display:none}
+.reglabel{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);opacity:.55;pointer-events:none}
+.mswitch{display:none}
+
+/* Site panel */
+#sitePanel{position:absolute;left:0;top:0;bottom:0;width:370px;background:var(--panel);border-right:1px solid var(--line);z-index:1100;display:none;flex-direction:column}
+#sitePanel.on{display:flex}
+.sp-head{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:flex-start}
+.sp-head h2{font-size:1.35rem;flex:1}
+.sp-body{flex:1;overflow:auto;padding:12px 12px calc(16px + var(--safe-b));display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+dl.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:.9rem}
+dl.facts dt{color:var(--muted)}dl.facts dd{margin:0;overflow-wrap:anywhere}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;min-height:40px}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.danger{border-color:var(--bad);background:transparent;color:var(--bad)}
+.x{border:none;background:none;font-size:1.6rem;cursor:pointer;color:var(--muted);line-height:1;padding:4px 8px;min-width:40px;min-height:40px}
+.hist{display:flex;flex-direction:column;gap:8px}
+.item{border:1px solid var(--line);border-radius:6px;padding:9px 11px;font-size:.9rem;cursor:pointer;background:var(--panel)}
+.item:hover{border-color:var(--accent)}
+.item .top{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.muted{color:var(--muted)}
+.empty{color:var(--muted);font-size:.9rem;font-style:italic;margin:0}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.75rem;font-weight:600;border:1px solid}
+.pill.Sched{color:var(--water)}.pill.Inv{color:var(--good)}
+.pill.Good{color:var(--good)}.pill.Fair{color:var(--warn)}.pill.Poor{color:var(--bad)}.pill.Due{color:var(--warn)}
+
+/* Tables, tiles, cards */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar h2{flex:1}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--paper)}
+tbody tr{cursor:pointer}tbody tr:hover{background:var(--paper)}
+td.r,th.r{text-align:right}
+.cards{display:none;flex-direction:column;gap:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.tile .big{font-family:var(--display);font-size:2.1rem;font-weight:700;line-height:1}
+.tile.warn{border-left-color:var(--warn)}.tile.good{border-left-color:var(--good)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.note{font-size:.85rem;color:var(--muted);margin:0}
+
+/* Modal */
+#modal{position:fixed;inset:0;background:rgba(10,20,15,.45);z-index:3000;display:none;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto}
+#modal.on{display:flex}
+.dlg{background:var(--panel);border-radius:10px;max-width:560px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--muted);font-weight:600}
+.form .full{grid-column:1/-1}
+.checks{display:flex;flex-wrap:wrap;gap:4px 8px}
+.checks label{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-weight:400;font-size:.92rem;padding:6px 10px;border:1px solid var(--line);border-radius:99px;cursor:pointer;min-height:38px}
+.checks label:has(input:checked){border-color:var(--accent);background:var(--paper);font-weight:600}
+.checks input{width:auto;min-height:0;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:2px 4px 2px 10px;font-size:.85rem;display:inline-flex;gap:4px;align-items:center}
+.chip button{border:none;background:none;cursor:pointer;color:var(--muted);min-width:28px;min-height:28px}
+.err{color:var(--bad);font-size:.9rem;margin:0}
+#toast{position:fixed;bottom:calc(18px + var(--safe-b));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 16px;border-radius:6px;z-index:4000;display:none;font-size:.9rem}
+
+/* ---------- Phone ---------- */
+@media (max-width:760px){
+  body{font-size:16px}
+  header{padding:calc(8px + var(--safe-t)) 14px 8px}
+  header h1{font-size:1.25rem}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:2000;border-top:1px solid var(--line);border-bottom:none;padding:0 0 var(--safe-b);justify-content:space-around;gap:0}
+  nav a{flex:1;flex-direction:column;gap:2px;font-size:.72rem;padding:7px 2px 6px;border-bottom:none;border-top:3px solid transparent;justify-content:center}
+  nav a svg{width:22px;height:22px}
+  nav a.on{border-color:var(--accent);color:var(--accent)}
+  main{margin-bottom:calc(58px + var(--safe-b))}
+  .scroll{padding:14px 12px 24px}
+  .mswitch{display:flex;position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:1050;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .mswitch button{border:none;background:none;padding:7px 18px;border-radius:99px;font-weight:600;color:var(--muted);cursor:pointer}
+  .mswitch button.on{background:var(--accent);color:var(--accent-ink)}
+  .rail{position:absolute;inset:0;width:auto;border-right:none;z-index:1040;padding-top:54px;display:none}
+  #v-map.list .rail{display:flex}
+  .mapbtns{top:62px}
+  .filters{grid-template-columns:1fr 1fr}
+  #sitePanel{position:fixed;inset:0;bottom:calc(58px + var(--safe-b));width:auto;border-right:none;z-index:2500;padding-top:var(--safe-t)}
+  #modal{padding:0;align-items:stretch}
+  .dlg{border-radius:0;max-width:none;min-height:100%;padding:16px 14px calc(20px + var(--safe-b))}
+  .form{grid-template-columns:1fr}
+  .tablewrap.hide-phone{display:none}
+  .cards{display:flex}
+  .tiles{grid-template-columns:1fr 1fr}
+  .tile .big{font-size:1.8rem}
+  .mode{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>CDOT Site Tracker</h1>
+  <span class="mode" id="modeChip">Local mode</span>
+</header>
+<nav id="nav" aria-label="Sections">
+  <a href="#map" data-v="map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Map</a>
+  <a href="#dashboard" data-v="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
+  <a href="#work" data-v="work"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5h11M9 12h11M9 19h11M4 5l1 1 2-2M4 12l1 1 2-2M4 19l1 1 2-2"/></svg>Work log</a>
+  <a href="#partners" data-v="partners"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.3-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.5c2.6.2 4.4 2 5 5"/></svg>Partners</a>
+  <a href="#settings" data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Settings</a>
+</nav>
+<main>
+  <section class="view" id="v-map">
+    <div class="mswitch" role="group" aria-label="Show map or list"><button id="mMap" class="on" type="button">Map</button><button id="mList" type="button">List</button></div>
+    <div class="rail">
+      <div class="filters">
+        <input class="wide" type="search" id="fSearch" placeholder="Search street, name, address or site ID" aria-label="Search sites">
+        <label for="fCat">Type<select id="fCat"><option value="">All sites</option><option value="TC">Traffic calming</option><option value="MP">Malls and plazas</option><option value="FT">Fountains</option></select></label>
+        <label for="fReg">Region<select id="fReg"><option value="">All regions</option><option value="1">Region 1</option><option value="2">Region 2</option><option value="3">Region 3</option><option value="5">Region 5</option><option value="6">Region 6</option><option value="Citywide">Fountains (citywide)</option></select></label>
+        <label for="fBy">Maintained by<select id="fBy"><option value="">Anyone</option></select></label>
+        <label for="fWard">Ward<select id="fWard"><option value="">All wards</option></select></label>
+        <label class="wide" for="fFlag">Show only<select id="fFlag"><option value="">Everything</option><option value="overdue">CDOT sites overdue for a visit</option><option value="nopartner">Community sites with no partner</option><option value="poor">Condition: Poor</option></select></label>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--accent);border-color:var(--accent)"></span>Traffic calming</span>
+        <span><span class="dot" style="background:var(--plaza);border-color:var(--plaza)"></span>Mall / plaza</span>
+        <span><span class="dot" style="background:var(--water);border-color:var(--water)"></span>Fountain</span>
+        <span><span class="dot" style="background:transparent;border-color:var(--muted)"></span>Community maintained</span>
+        <label id="regToggleWrap" for="regToggle" style="display:none"><input type="checkbox" id="regToggle" checked>Shade regions</label>
+      </div>
+      <div class="listhead"><span class="num" id="listHead"></span><span id="sortNote"></span></div>
+      <ul id="siteList"></ul>
+    </div>
+    <div id="map" role="region" aria-label="Map of sites"></div>
+    <div class="mapbtns"><button type="button" id="nearMe">Near me</button></div>
+    <div class="notiles" id="noTiles">Street map tiles can't load in this preview. They show once the app is on GitHub Pages.</div>
+    <aside id="sitePanel" aria-label="Site details"></aside>
+  </section>
+
+  <section class="view" id="v-dashboard"><div class="scroll"><div class="wrap" id="dash"></div></div></section>
+  <section class="view" id="v-work"><div class="scroll"><div class="wrap">
+    <div class="toolbar"><h2>Work log</h2><button class="btn" data-new="visits">Log a visit</button></div>
+    <div class="filters" style="border:none;padding:0;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <label for="wSearch">Search<input id="wSearch" type="search" placeholder="Site or street"></label>
+      <label for="wReg">Region<select id="wReg"><option value="">All regions</option><option value="1">Region 1</option><option value="2">Region 2</option><option value="3">Region 3</option><option value="5">Region 5</option><option value="6">Region 6</option><option value="Citywide">Fountains</option></select></label>
+      <label for="wMonth">Month<select id="wMonth"><option value="">All months</option></select></label>
+      <label for="wSrc">Record type<select id="wSrc"><option value="">All</option><option>Confirmed</option><option>Invoice</option><option>Contractor schedule</option></select></label>
+    </div>
+    <p class="note" id="wCount"></p>
+    <div id="wTable"></div></div></div></section>
+  <section class="view" id="v-partners"><div class="scroll"><div class="wrap">
+    <div class="toolbar"><h2>Community partners</h2><button class="btn" data-new="partners">Add a partner</button></div>
+    <div id="pTable"></div></div></div></section>
+  <section class="view" id="v-settings"><div class="scroll"><div class="wrap" id="settingsBox"></div></div></section>
+</main>
+<datalist id="siteOptions"></datalist>
+<div id="modal" role="dialog" aria-modal="true"><div class="dlg" id="dlg"></div></div>
+<div id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+"use strict";
+/* ---------- constants ---------- */
+const CAT = {TC:"Traffic calming", MP:"Mall / plaza", FT:"Fountain"};
+const WORK_TYPES = ["Routine maintenance","Inspection","Weeding","Mulch","Planting","Pruning","Mowing","Watering / irrigation","Litter pickup","Fountain startup","Fountain winterization","Fountain repair","Fountain covers","Seeding","Pest / weed control","Other"];
+const P_TYPES = ["Block club","Chamber / SSA","Church","School","Business","Resident","Other"];
+const REGIONS = ["1","2","3","5","6"];
+const CONTRACTORS = {"1":"A Safe Haven","2":"Christy Webber","3":"Lizzette Medina","5":"Lizzette Medina","6":"Christy Webber"};
+const FOUNTAIN_CONTRACTOR = "Fountain Pros";
+const contractorFor = s => !s ? "" : s.cat==="FT" ? FOUNTAIN_CONTRACTOR : (CONTRACTORS[String(s.reg)] || "");
+const contractLabel = s => !s ? "" : s.cat==="FT" ? `Citywide fountain contract (${FOUNTAIN_CONTRACTOR})` : (CONTRACTORS[String(s.reg)] ? `Region ${s.reg} landscape (${CONTRACTORS[String(s.reg)]})` : "");
+const TABLES = ["visits","partners","site_notes","settings"];
+const KEYS = {site_notes:"site_id", settings:"key"};
+const DEFAULTS = {overdue_days:60};
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const daysSince = d => d ? Math.round((Date.parse(today()+"T00:00:00Z") - Date.parse(d+"T00:00:00Z"))/864e5) : null;
+const ago = d => { const n=daysSince(d); return n===0?"today":n===1?"yesterday":n<0?"upcoming":n+" days ago"; };
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2));
+const fmtDate = d => d ? new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "";
+const schedPill = v => v.source==="Contractor schedule" ? ' <span class="pill Sched">Schedule</span>' : v.source==="Invoice" ? ' <span class="pill Inv">Invoice</span>' : "";
+const isPhone = () => matchMedia("(max-width:760px)").matches;
+function toast(msg){const t=$("#toast");t.textContent=msg;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display="none",2600);}
+function lsGet(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
+
+/* ---------- data store: this browser, or Supabase when connected ---------- */
+const store = {
+  mode:"local", sb:null, data:{},
+  async init(){
+    TABLES.forEach(t=>this.data[t]=[]);
+    const cfg = lsGet("cst.cloud", null);
+    if (cfg && cfg.url && cfg.key && window.supabase){
+      try{
+        this.sb = window.supabase.createClient(cfg.url, cfg.key);
+        const {data:{session}} = await this.sb.auth.getSession();
+        if (session){ this.mode="cloud"; await this.loadCloud(); return; }
+      }catch(e){ console.warn("Cloud connection failed", e); }
+    }
+    this.mode="local";
+    const saved = lsGet("cst.data", null);
+    if (saved){
+      // earlier versions loaded example records; drop them
+      TABLES.forEach(t=>this.data[t]=(saved[t]||[]).filter(r=>!r.ex));
+      this.persistLocal();
+    }
+  },
+  async loadCloud(){
+    for (const t of TABLES){
+      const {data, error} = await this.sb.from(t).select("*");
+      if (error) throw error;
+      this.data[t] = data || [];
+    }
+  },
+  persistLocal(){ if (this.mode==="local" && !lsSet("cst.data", this.data)) toast("This browser won't save records. Export a backup before closing."); },
+  async save(t, rec){
+    const k = KEYS[t] || "id";
+    if (!rec[k]) rec[k] = uuid();
+    if (this.mode==="cloud"){
+      const {error} = await this.sb.from(t).upsert(rec);
+      if (error){ toast("Couldn't save: "+error.message); throw error; }
+    }
+    const i = this.data[t].findIndex(r=>r[k]===rec[k]);
+    if (i>=0) this.data[t][i]=rec; else this.data[t].push(rec);
+    this.persistLocal();
+  },
+  async remove(t, id){
+    const k = KEYS[t] || "id";
+    if (this.mode==="cloud"){
+      const {error} = await this.sb.from(t).delete().eq(k, id);
+      if (error){ toast("Couldn't delete: "+error.message); throw error; }
+    }
+    this.data[t] = this.data[t].filter(r=>r[k]!==id);
+    this.persistLocal();
+  },
+  setting(k){ const r=this.data.settings.find(s=>s.key===k); return r ? r.value : DEFAULTS[k]; }
+};
+
+/* ---------- sites ---------- */
+let SITES = [], BYID = {}, HERE = null;
+const siteLabel = s => s ? `${s.id} · ${s.name}` : "";
+const siteName = id => BYID[id] ? BYID[id].name : (id||"");
+function parseSite(v){ if(!v) return ""; const id=v.split(" · ")[0].trim().toUpperCase(); return BYID[id]?id:""; }
+const isCDOT = s => /^CDOT/.test(s.by||"");
+const isCommunity = s => /^Community/.test(s.by||"");
+const condOf = id => (store.data.site_notes.find(n=>n.site_id===id)||{}).condition || "";
+function stats(){
+  const st = {};
+  SITES.forEach(s=>st[s.id]={last:null,partner:false});
+  store.data.visits.forEach(v=>{ const n=st[v.site_id]; if(n && (!n.last || v.visit_date>n.last)) n.last=v.visit_date; });
+  store.data.partners.forEach(p=>(p.site_ids||[]).forEach(id=>{ if(st[id]) st[id].partner=true; }));
+  return st;
+}
+function overdue(s, st){ if(!isCDOT(s)) return false; const d=daysSince(st[s.id].last); return d===null || d>store.setting("overdue_days"); }
+function distMi(s){ if(!HERE) return null; const dy=(s.lat-HERE[0])*69.0, dx=(s.lon-HERE[1])*51.5; return Math.sqrt(dx*dx+dy*dy); }
+
+/* ---------- map ---------- */
+let map, markers = {}, selected = null, COLORS = null, hereMarker = null;
+function colorFor(s){ if(!COLORS){ const v=getComputedStyle(document.documentElement); COLORS={TC:v.getPropertyValue("--accent").trim(),MP:v.getPropertyValue("--plaza").trim(),FT:v.getPropertyValue("--water").trim()}; } return COLORS[s.cat]; }
+try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{COLORS=null;renderMap();}); }catch(e){}
+function initMap(){
+  if (!window.L){ $("#map").innerHTML='<p class="empty" style="padding:20px">The map didn\'t load. Check your connection and reload.</p>'; return; }
+  map = L.map("map",{preferCanvas:true, zoomControl:!isPhone(), tap:true}).setView([41.83,-87.68],11);
+  const tiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{maxZoom:20,subdomains:"abcd",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
+  let ok=false; tiles.on("tileload",()=>{ok=true;$("#noTiles").style.display="none";});
+  tiles.on("tileerror",()=>{ if(!ok) $("#noTiles").style.display="block"; });
+  fetch("regions.geojson").then(r=>r.ok?r.json():null).then(gj=>{
+    if(!gj) return;
+    const fills={"1":"#2f5d50","2":"#2a6f97","3":"#7a5ea8","5":"#b7791f","6":"#b4372f"};
+    const layer=L.geoJSON(gj,{interactive:false,style:f=>({stroke:true,weight:1,color:fills[f.properties.region],opacity:.5,fillColor:fills[f.properties.region],fillOpacity:.12})});
+    const labels=L.layerGroup(gj.features.map(f=>L.marker(L.geoJSON(f).getBounds().getCenter(),{interactive:false,icon:L.divIcon({className:"",iconSize:null,html:`<span class="reglabel">Region ${f.properties.region}</span>`})})));
+    const show=on=>{ if(on){layer.addTo(map);labels.addTo(map);layer.bringToBack();} else {map.removeLayer(layer);map.removeLayer(labels);} };
+    const tg=$("#regToggle"); $("#regToggleWrap").style.display="inline-flex";
+    tg.checked = lsGet("cst.regions", true);
+    tg.addEventListener("change",()=>{ show(tg.checked); lsSet("cst.regions", tg.checked); });
+    show(tg.checked);
+  }).catch(()=>{});
+  SITES.forEach(s=>{
+    const m = L.circleMarker([s.lat,s.lon],{radius:s.cat==="TC"?6:8,weight:2});
+    m.bindTooltip(esc(s.name)); m.on("click",()=>openSite(s.id,false)); markers[s.id]=m;
+  });
+}
+function styleMarker(s){
+  const m=markers[s.id]; if(!m) return;
+  const col=colorFor(s);
+  m.setStyle({color:col, fillColor:col, fillOpacity: isCommunity(s)?0.1:0.85, weight: s.id===selected?4:2});
+  m.setRadius((s.cat==="TC"?6:8) + (s.id===selected?4:0));
+}
+
+/* ---------- filters + list ---------- */
+function filtered(st){
+  const q=$("#fSearch").value.trim().toLowerCase(), cat=$("#fCat").value, reg=$("#fReg").value, by=$("#fBy").value, ward=$("#fWard").value, flag=$("#fFlag").value;
+  const out = SITES.filter(s=>{
+    if(cat && s.cat!==cat) return false;
+    if(reg && String(s.reg)!==reg) return false;
+    if(by && s.by!==by) return false;
+    if(ward && String(s.ward)!==ward) return false;
+    if(flag==="overdue" && !overdue(s,st)) return false;
+    if(flag==="nopartner" && !(isCommunity(s) && !st[s.id].partner)) return false;
+    if(flag==="poor" && condOf(s.id)!=="Poor") return false;
+    if(q){ const hay=(s.id+" "+s.name+" "+(s.addr||"")+" "+(s.sub||"")).toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+  if(HERE) out.sort((a,b)=>distMi(a)-distMi(b));
+  return out;
+}
+function renderMap(){
+  const st=stats(), list=filtered(st), ids=new Set(list.map(s=>s.id));
+  if(map) SITES.forEach(s=>{ const m=markers[s.id]; if(!m) return; if(ids.has(s.id)){ if(!map.hasLayer(m)) m.addTo(map); styleMarker(s);} else if(map.hasLayer(m)) map.removeLayer(m); });
+  $("#listHead").textContent = `${list.length} of ${SITES.length} sites`;
+  $("#sortNote").innerHTML = HERE ? 'Nearest first · <a href="#" id="clearHere">Clear</a>' : "";
+  $("#siteList").innerHTML = list.slice(0,300).map(s=>{
+    const n=st[s.id], tags=[], c=condOf(s.id), d=distMi(s);
+    if(c) tags.push(`<span class="pill ${c}">${c}</span>`);
+    if(overdue(s,st) && n.last) tags.push(`<span class="pill Due">Due</span>`);
+    return `<li data-id="${s.id}" class="${s.id===selected?"sel":""}"><span class="dot" style="margin-top:5px;background:${isCommunity(s)?"transparent":colorFor(s)};border-color:${colorFor(s)}"></span>
+      <div><div class="nm">${esc(s.name)} ${tags.join(" ")}</div><div class="meta">${esc(s.sub||CAT[s.cat])} · ${s.cat==="FT"?"Citywide":"Region "+esc(s.reg||"?")} · Ward ${esc(s.ward||"?")} · ${esc(s.by||"")}${n.last?` · Last visit ${fmtDate(n.last)}`:""}</div></div>
+      ${d!=null?`<span class="dist num">${d<0.1?"here":d.toFixed(1)+" mi"}</span>`:""}</li>`;
+  }).join("") + (list.length>300?`<li class="meta">Showing the first 300. Narrow the filters or search to see the rest.</li>`:"") + (list.length?"":`<li class="meta">No sites match these filters.</li>`);
+}
+function setMapMode(m){ $("#v-map").classList.toggle("list", m==="list"); $("#mMap").classList.toggle("on",m!=="list"); $("#mList").classList.toggle("on",m==="list"); if(m!=="list" && map) setTimeout(()=>map.invalidateSize(),0); }
+function nearMe(){
+  if(!navigator.geolocation){ toast("Location isn't available on this device."); return; }
+  $("#nearMe").textContent="Finding you…";
+  try{
+    navigator.geolocation.getCurrentPosition(p=>{
+      HERE=[p.coords.latitude,p.coords.longitude]; $("#nearMe").textContent="Near me";
+      if(map){ if(hereMarker) map.removeLayer(hereMarker); hereMarker=L.circleMarker(HERE,{radius:8,color:"#fff",weight:3,fillColor:"#1a73e8",fillOpacity:1}).addTo(map); map.setView(HERE,16); }
+      renderMap(); toast("List sorted by distance from you");
+    }, ()=>{ $("#nearMe").textContent="Near me"; toast("Couldn't get your location. Allow location access for this site and try again."); }, {enableHighAccuracy:true,timeout:12000});
+  }catch(e){ $("#nearMe").textContent="Near me"; toast("Location is blocked here. It works once the app is on GitHub Pages."); }
+}
+
+/* ---------- site panel ---------- */
+function openSite(id, zoom){
+  selected=id; const s=BYID[id]; if(!s) return;
+  const st=stats()[id], note=store.data.site_notes.find(n=>n.site_id===id)||{site_id:id};
+  const visits=store.data.visits.filter(v=>v.site_id===id).sort((a,b)=>(b.visit_date||"").localeCompare(a.visit_date||""));
+  const partners=store.data.partners.filter(p=>(p.site_ids||[]).includes(id));
+  const parent=s.at?BYID[s.at]:null, kids=SITES.filter(x=>x.at===id);
+  const fact=(k,v)=>v?`<dt>${k}</dt><dd>${v}</dd>`:"";
+  const links=(s.link||"").split(" | ").filter(Boolean).map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\/(www\.)?/,"").split("/")[0])}</a>`).join(", ");
+  const d=distMi(s);
+  $("#sitePanel").innerHTML = `
+    <div class="sp-head"><h2>${esc(s.name)}</h2><button class="x" id="spClose" aria-label="Close site details">×</button></div>
+    <div class="sp-body">
+      <div class="btnrow">
+        <button class="btn" data-new="visits" data-site="${id}">Log a visit</button>
+        <a class="btn ghost" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}" target="_blank" rel="noopener">Directions${d!=null?` · ${d.toFixed(1)} mi`:""}</a>
+      </div>
+      <dl class="facts">
+        ${fact("Site ID",`<span class="num">${s.id}</span>`)}
+        ${fact("Type",esc(s.sub?CAT[s.cat]+" · "+s.sub:CAT[s.cat]))}
+        ${fact("Address",esc(s.addr))}
+        ${fact("Ward",esc(s.ward))}${fact("Community",esc(s.ca))}
+        ${fact("Contract",esc(contractLabel(s)))}
+        ${fact("Maintained by",esc(s.by))}${fact("Maintenance",esc(s.mt))}${fact("Mow site",esc(s.mow))}
+        ${fact("Size",s.sqyd?`<span class="num">${s.sqyd} sq yd</span>`:"")}
+        ${fact("Last visit",st.last?`${fmtDate(st.last)} <span class="muted">(${ago(st.last)})</span>`:(isCDOT(s)?'<span style="color:var(--warn)">None logged</span>':""))}
+        ${fact("Links",links)}
+        ${fact("Inside",parent?`<a href="#" data-site="${parent.id}">${esc(parent.name)}</a>`:"")}
+        ${fact("Also here",kids.map(k=>`<a href="#" data-site="${k.id}">${esc(k.name)}</a>`).join(", "))}
+        ${fact("Data note",esc(s.note))}
+      </dl>
+      <div class="form">
+        <label for="spCond">Condition<select id="spCond"><option value="">Not rated</option>${["Good","Fair","Poor"].map(c=>`<option ${note.condition===c?"selected":""}>${c}</option>`).join("")}</select></label>
+        <label class="full" for="spNotes">Site notes<textarea id="spNotes" placeholder="Plant list, access, irrigation, anything the next visit should know">${esc(note.notes)}</textarea></label>
+        <div class="full"><button class="btn ghost" id="spSaveNote" type="button">Save condition and notes</button></div>
+      </div>
+      <h3>Work log (${visits.length})</h3>
+      <div class="hist">${visits.map(v=>`<div class="item" data-edit="visits" data-id="${v.id}"><div class="top"><span>${esc((v.work_types||[]).join(", ")||"Visit")}${schedPill(v)}</span><span class="num">${fmtDate(v.visit_date)}</span></div><div class="muted">${esc(v.done_by||"")}${v.hours?` · ${v.hours} hr`:""}</div>${v.notes?`<div class="muted">${esc(v.notes)}</div>`:""}</div>`).join("")||'<p class="empty">No visits logged.</p>'}</div>
+      <h3>Partners (${partners.length})</h3>
+      <div class="hist">${partners.map(p=>`<div class="item" data-edit="partners" data-id="${p.id}"><div class="top"><span>${esc(p.name)}</span><span class="muted">${esc(p.partner_type||"")}</span></div><div class="muted">${p.agreement_end?`Agreement through ${fmtDate(p.agreement_end)}`:"No agreement dates"}</div></div>`).join("")||`<p class="empty">No partner assigned.${isCommunity(s)?" This is a community-maintained site.":""}</p>`}</div>
+    </div>`;
+  $("#sitePanel").classList.add("on");
+  $("#spClose").onclick=closeSite;
+  $("#spSaveNote").onclick=async()=>{ try{ await store.save("site_notes",{site_id:id,condition:$("#spCond").value,notes:$("#spNotes").value,updated_at:new Date().toISOString()}); toast("Saved"); refresh(); }catch(e){} };
+  if(map && markers[id] && zoom!==false){ map.setView([s.lat,s.lon], Math.max(map.getZoom(),16)); }
+  renderMap();
+}
+function closeSite(){ selected=null; $("#sitePanel").classList.remove("on"); renderMap(); if(map) setTimeout(()=>map.invalidateSize(),0); }
+
+/* ---------- forms ---------- */
+const F = {
+  visits:{title:"visit", fields:[
+    {k:"site_id",l:"Site",t:"site",req:1,full:1},{k:"visit_date",l:"Date",t:"date",req:1},{k:"done_by",l:"Done by",t:"text",list:["CDOT crew","A Safe Haven","Christy Webber","Lizzette Medina","Fountain Pros","Community partner"]},
+    {k:"source",l:"Record type",t:"select",opts:["Confirmed","Invoice","Contractor schedule"]},{k:"work_types",l:"Work done",t:"checks",opts:WORK_TYPES,full:1},{k:"hours",l:"Hours",t:"number"},{k:"notes",l:"Notes",t:"area",full:1}]},
+  partners:{title:"partner", fields:[
+    {k:"name",l:"Organization or name",t:"text",req:1,full:1},{k:"partner_type",l:"Type",t:"select",opts:P_TYPES},{k:"waiver",l:"Waiver / insurance on file",t:"select",opts:["Yes","No","Pending"]},
+    {k:"contact_name",l:"Contact",t:"text"},{k:"contact_phone",l:"Phone",t:"tel"},{k:"contact_email",l:"Email",t:"email",full:1},
+    {k:"agreement_start",l:"Agreement start",t:"date"},{k:"agreement_end",l:"Agreement end",t:"date"},
+    {k:"site_ids",l:"Adopted sites",t:"sites",full:1},{k:"commitments",l:"What they've agreed to do",t:"area",full:1},{k:"notes",l:"Notes",t:"area",full:1}]}
+};
+let picked = [];
+function field(f, v){
+  const id="f_"+f.k, cls=f.full?"full":"", lab=`${f.l}${f.req?" *":""}`;
+  if(f.t==="site") return `<label class="${cls}" for="${id}">${lab}<input id="${id}" list="siteOptions" value="${esc(v?siteLabel(BYID[v]):"")}" placeholder="Type a street, name or ID" autocomplete="off"></label>`;
+  if(f.t==="sites"){ picked=[...(v||[])]; return `<div class="${cls}"><label for="${id}">${lab}<input id="${id}" list="siteOptions" placeholder="Type to add a site" autocomplete="off"></label><div class="chips" id="chips" style="margin-top:6px"></div></div>`; }
+  if(f.t==="select") return `<label class="${cls}" for="${id}">${lab}<select id="${id}"><option value=""></option>${f.opts.map(o=>`<option ${v===o?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+  if(f.t==="checks") return `<fieldset class="${cls}" style="border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:0"><legend class="muted" style="font-size:.8rem;font-weight:600">${lab}</legend><div class="checks">${f.opts.map((o,i)=>`<label for="${id}_${i}"><input type="checkbox" id="${id}_${i}" value="${esc(o)}" ${(v||[]).includes(o)?"checked":""}>${esc(o)}</label>`).join("")}</div></fieldset>`;
+  if(f.t==="area") return `<label class="${cls}" for="${id}">${lab}<textarea id="${id}">${esc(v)}</textarea></label>`;
+  const dl = f.list?`<datalist id="${id}_dl">${f.list.map(o=>`<option value="${esc(o)}">`).join("")}</datalist>`:"";
+  return `<label class="${cls}" for="${id}">${lab}<input id="${id}" type="${f.t}" ${f.t==="number"?'step="any" inputmode="decimal"':""} ${f.list?`list="${id}_dl"`:""} value="${esc(v)}">${dl}</label>`;
+}
+function drawChips(){ const c=$("#chips"); if(!c) return; c.innerHTML=picked.map(id=>`<span class="chip">${esc(siteLabel(BYID[id])||id)}<button type="button" data-unpick="${id}" aria-label="Remove ${esc(siteName(id))}">×</button></span>`).join("")||'<span class="empty">None yet</span>'; }
+function openForm(t, rec, presetSite){
+  const def=F[t], isNew=!rec;
+  rec = rec ? {...rec} : {};
+  if(isNew){
+    if(t==="visits"){ rec.visit_date=today(); rec.source="Confirmed"; if(presetSite){ rec.site_id=presetSite; } }
+    if(t==="partners" && presetSite) rec.site_ids=[presetSite];
+  }
+  $("#dlg").innerHTML = `<div class="toolbar"><h2>${isNew?"New":"Edit"} ${def.title}</h2><button class="x" id="dlgX" aria-label="Close">×</button></div>
+    <form class="form" id="frm" novalidate>${def.fields.map(f=>field(f,rec[f.k])).join("")}
+    <p class="err full" id="frmErr" hidden></p>
+    <div class="btnrow full"><button class="btn" type="submit">Save</button><button class="btn ghost" type="button" id="dlgCancel">Cancel</button>${isNew?"":'<span style="flex:1"></span><button class="btn danger" type="button" id="dlgDel">Delete</button>'}</div></form>`;
+  $("#modal").classList.add("on"); $("#modal").scrollTop=0; drawChips();
+  const close=()=>$("#modal").classList.remove("on");
+  $("#dlgX").onclick=close; $("#dlgCancel").onclick=close;
+  // suggest the site's contractor for "Done by"
+  const siteIn=$("#f_site_id"), doneBy=$("#f_done_by");
+  const fillContractor=()=>{ const s=BYID[parseSite(siteIn.value)]; if(s && doneBy && !doneBy.value && isCDOT(s)) doneBy.value=contractorFor(s); };
+  if(siteIn){ siteIn.addEventListener("change",fillContractor); if(isNew) fillContractor(); }
+  const multi=$("#f_site_ids"); if(multi) multi.addEventListener("change",()=>{ const id=parseSite(multi.value); if(id && !picked.includes(id)) picked.push(id); multi.value=""; drawChips(); });
+  if(!isNew) $("#dlgDel").onclick=async()=>{
+    const b=$("#dlgDel"); if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Tap again to delete"; return; }
+    try{ await store.remove(t, rec.id); close(); toast("Deleted"); refresh(); }catch(e){}
+  };
+  $("#frm").onsubmit=async e=>{
+    e.preventDefault(); const out={...rec}; const err=[];
+    for(const f of def.fields){
+      const el=$("#f_"+f.k);
+      if(f.t==="site"){ out[f.k]=parseSite(el.value); if(f.req && !out[f.k]) err.push("Pick a site from the list (start typing a street or ID)."); continue; }
+      if(f.t==="sites"){ out[f.k]=[...picked]; continue; }
+      if(f.t==="checks"){ out[f.k]=f.opts.filter((o,i)=>$(`#f_${f.k}_${i}`).checked); continue; }
+      let v=el.value.trim(); if(f.t==="number") v = v===""?null:Number(v); if(v==="") v=null;
+      if(f.req && (v===null || (f.t==="number" && isNaN(v)))) err.push(`${f.l} is required.`);
+      out[f.k]=v;
+    }
+    if(err.length){ const p=$("#frmErr"); p.hidden=false; p.textContent=err.join(" "); return; }
+    try{ await store.save(t,out); close(); toast("Saved"); refresh(); }catch(e){}
+  };
+}
+
+/* ---------- work log + partners ---------- */
+function siteCell(id){ return BYID[id]?`<a href="#" data-site="${id}">${esc(BYID[id].name)}</a><div class="muted num" style="font-size:.78rem">${id} · ${BYID[id].cat==="FT"?"Citywide":"Region "+esc(BYID[id].reg)} · Ward ${esc(BYID[id].ward)}</div>`:esc(id); }
+function renderWork(){
+  const months=[...new Set(store.data.visits.map(v=>(v.visit_date||"").slice(0,7)).filter(Boolean))].sort().reverse();
+  const mSel=$("#wMonth"), mCur=mSel.value;
+  mSel.innerHTML='<option value="">All months</option>'+months.map(m=>`<option value="${m}" ${m===mCur?"selected":""}>${new Date(m+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"})}</option>`).join("");
+  const q=$("#wSearch").value.trim().toLowerCase(), reg=$("#wReg").value, mo=mSel.value, src=$("#wSrc").value;
+  const all=[...store.data.visits].sort((a,b)=>(b.visit_date||"").localeCompare(a.visit_date||""));
+  const rows=all.filter(v=>{ const s=BYID[v.site_id]; if(reg && String(s?.reg)!==reg) return false; if(mo && !(v.visit_date||"").startsWith(mo)) return false; if(src && (v.source||"Confirmed")!==src) return false; if(q && !((s?.name||"")+" "+v.site_id).toLowerCase().includes(q)) return false; return true; });
+  $("#wCount").textContent = all.length ? `${rows.length} of ${all.length} visits${rows.length>300?" · showing the latest 300":""}` : "";
+  if(!all.length){ $("#wTable").innerHTML='<p class="empty">No visits logged yet. Open a site on the map and tap "Log a visit," or import a schedule file in Settings.</p>'; return; }
+  if(!rows.length){ $("#wTable").innerHTML='<p class="empty">No visits match these filters.</p>'; return; }
+  rows.length=Math.min(rows.length,300);
+  $("#wTable").innerHTML = `<div class="tablewrap hide-phone"><table><thead><tr><th>Date</th><th>Site</th><th>Work</th><th>Done by</th><th class="r">Hours</th></tr></thead><tbody>${rows.map(v=>`<tr data-edit="visits" data-id="${v.id}"><td class="num">${fmtDate(v.visit_date)}</td><td>${siteCell(v.site_id)}</td><td>${esc((v.work_types||[]).join(", "))}${schedPill(v)}<div class="muted">${esc(v.notes||"")}</div></td><td>${esc(v.done_by||"")}</td><td class="r num">${v.hours??""}</td></tr>`).join("")}</tbody></table></div>
+    <div class="cards">${rows.map(v=>`<div class="item" data-edit="visits" data-id="${v.id}"><div class="top"><span>${esc(siteName(v.site_id))}</span><span class="num">${fmtDate(v.visit_date)}</span></div><div>${esc((v.work_types||[]).join(", "))}${schedPill(v)}</div><div class="muted">${esc(v.done_by||"")}${v.hours?` · ${v.hours} hr`:""}</div></div>`).join("")}</div>`;
+}
+function renderPartners(){
+  const rows=[...store.data.partners].sort((a,b)=>a.name.localeCompare(b.name));
+  if(!rows.length){ $("#pTable").innerHTML='<p class="empty">No partners yet. Add the block clubs, chambers and neighbors who care for community-maintained sites.</p>'; return; }
+  const soon=p=>p.agreement_end && daysSince(p.agreement_end)>-30;
+  $("#pTable").innerHTML = `<div class="tablewrap hide-phone"><table><thead><tr><th>Partner</th><th>Contact</th><th>Agreement</th><th>Waiver</th><th>Sites</th></tr></thead><tbody>${rows.map(p=>`<tr data-edit="partners" data-id="${p.id}"><td><strong>${esc(p.name)}</strong><div class="muted">${esc(p.partner_type||"")}</div></td><td>${esc(p.contact_name||"")}<div class="muted">${esc([p.contact_phone,p.contact_email].filter(Boolean).join(" · "))}</div></td><td class="num" style="${soon(p)?"color:var(--warn);font-weight:600":""}">${p.agreement_start?fmtDate(p.agreement_start):""}${p.agreement_end?" to "+fmtDate(p.agreement_end):""}</td><td>${esc(p.waiver||"")}</td><td>${(p.site_ids||[]).map(id=>`<a href="#" data-site="${id}">${esc(siteName(id))}</a>`).join(", ")}</td></tr>`).join("")}</tbody></table></div>
+    <div class="cards">${rows.map(p=>`<div class="item" data-edit="partners" data-id="${p.id}"><div class="top"><span>${esc(p.name)}</span><span class="muted">${esc(p.partner_type||"")}</span></div><div class="muted">${esc(p.contact_name||"")}${p.contact_phone?" · "+esc(p.contact_phone):""}</div><div class="muted" style="${soon(p)?"color:var(--warn)":""}">${p.agreement_end?"Agreement through "+fmtDate(p.agreement_end):"No agreement dates"} · ${(p.site_ids||[]).length} site${(p.site_ids||[]).length===1?"":"s"}</div></div>`).join("")}</div>`;
+}
+
+/* ---------- dashboard ---------- */
+function renderDash(){
+  const st=stats();
+  const cdot=SITES.filter(isCDOT), od=cdot.filter(s=>overdue(s,st)), never=cdot.filter(s=>!st[s.id].last);
+  const comm=SITES.filter(isCommunity), nop=comm.filter(s=>!st[s.id].partner);
+  const poor=SITES.filter(s=>condOf(s.id)==="Poor");
+  const soon=store.data.partners.filter(p=>p.agreement_end && daysSince(p.agreement_end)>-30);
+  const recent=[...store.data.visits].sort((a,b)=>(b.visit_date||"").localeCompare(a.visit_date||"")).slice(0,8);
+  const byReg=REGIONS.map(r=>{ const ss=SITES.filter(s=>String(s.reg)===r); return {r, n:ss.length, od:ss.filter(s=>overdue(s,st)).length, c:CONTRACTORS[r]}; });
+  $("#dash").innerHTML = `
+    <h2>Where things stand</h2>
+    <div class="tiles">
+      <button class="tile ${od.length?"warn":"good"}" data-flag="overdue"><span class="muted">CDOT sites overdue for a visit</span><span class="big num">${od.length}</span><span class="note">of ${cdot.length} · ${never.length} with no visit logged · overdue after ${store.setting("overdue_days")} days</span></button>
+      <button class="tile ${nop.length?"warn":"good"}" data-flag="nopartner"><span class="muted">Community sites with no partner</span><span class="big num">${nop.length}</span><span class="note">of ${comm.length} community-maintained</span></button>
+      <button class="tile ${poor.length?"warn":"good"}" data-flag="poor"><span class="muted">Sites rated Poor</span><span class="big num">${poor.length}</span><span class="note">${SITES.filter(s=>condOf(s.id)).length} sites rated so far</span></button>
+      <button class="tile ${soon.length?"warn":"good"}" data-go="partners"><span class="muted">Partner agreements ending in 30 days</span><span class="big num">${soon.length}</span><span class="note">${store.data.partners.length} partners on file</span></button>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>By region</h3>
+        <table><thead><tr><th>Region</th><th>Contractor</th><th class="r">Sites</th><th class="r">Overdue</th></tr></thead><tbody>
+        ${byReg.map(x=>`<tr data-reg="${x.r}"><td>Region ${x.r}</td><td>${esc(x.c)}</td><td class="r num">${x.n}</td><td class="r num">${x.od}</td></tr>`).join("")}
+        <tr data-reg="Citywide"><td>Fountains</td><td>${FOUNTAIN_CONTRACTOR}</td><td class="r num">${SITES.filter(s=>s.cat==="FT").length}</td><td class="r num">${SITES.filter(s=>s.cat==="FT"&&overdue(s,st)).length}</td></tr>
+        </tbody></table></div>
+      <div class="card"><h3>Latest visits</h3>
+        ${recent.length?`<table><tbody>${recent.map(v=>`<tr data-edit="visits" data-id="${v.id}"><td class="num" style="white-space:nowrap">${fmtDate(v.visit_date)}</td><td>${esc(siteName(v.site_id))}<div class="muted">${esc((v.work_types||[]).join(", "))}</div></td></tr>`).join("")}</tbody></table>`:'<p class="empty">No visits logged yet.</p>'}</div>
+    </div>
+    <h3>Site inventory</h3>
+    <div class="tiles">${["TC","MP","FT"].map(c=>{const ss=SITES.filter(s=>s.cat===c);return `<button class="tile" data-cat="${c}"><span class="muted">${CAT[c]}</span><span class="big num">${ss.length}</span><span class="note">${ss.filter(isCDOT).length} CDOT · ${ss.filter(isCommunity).length} community</span></button>`;}).join("")}</div>`;
+}
+function showOnMap(set){ ["fSearch","fCat","fReg","fBy","fWard","fFlag"].forEach(id=>$("#"+id).value=""); Object.entries(set).forEach(([k,v])=>$("#"+k).value=v); location.hash="map"; if(isPhone()) setMapMode("list"); renderMap(); }
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  const cfg=lsGet("cst.cloud",{})||{};
+  $("#settingsBox").innerHTML = `
+    <h2>Settings</h2>
+    <div class="card"><h3>Visit schedule</h3>
+      <div class="form">
+        <label for="sOver">A CDOT site is overdue after this many days without a visit<input id="sOver" type="number" step="1" inputmode="numeric" value="${esc(store.setting("overdue_days"))}"></label>
+        <div class="full"><button class="btn" id="sSave" type="button">Save</button></div>
+      </div></div>
+    <div class="card"><h3>Where your records are kept</h3>
+      ${store.mode==="cloud"?`<p class="note">Synced to your Supabase project. Sign in on your phone and computer to see the same records.</p><div class="btnrow"><button class="btn ghost" id="sOut" type="button">Sign out</button></div>`:
+      `<p class="note">Right now records are saved in <strong>this browser only</strong>. To use the same records on your phone and computer, connect your free Supabase project. The README walks through it, same as the Reno app.</p>
+      <div class="form">
+        <label class="full" for="sUrl">Supabase project URL<input id="sUrl" value="${esc(cfg.url||"")}" placeholder="https://abcdefgh.supabase.co" autocapitalize="off"></label>
+        <label class="full" for="sKey">Supabase anon (public) key<input id="sKey" value="${esc(cfg.key||"")}" autocapitalize="off"></label>
+        <label for="sEmail">Your login email<input id="sEmail" type="email" autocomplete="username" autocapitalize="off"></label>
+        <label for="sPw">Password<input id="sPw" type="password" autocomplete="current-password"></label>
+        <p class="err full" id="sErr" hidden></p>
+        <div class="full btnrow"><button class="btn" id="sConnect" type="button">Connect and sign in</button></div>
+        <p class="note full">When you connect, records already in this browser are copied up to Supabase.</p>
+      </div>`}</div>
+    <div class="card"><h3>Add to your phone's home screen</h3>
+      <p class="note">Open the app's web address in Safari (iPhone) or Chrome (Android), then choose Share › Add to Home Screen (iPhone) or ⋮ › Add to Home screen (Android). It opens full screen like an app.</p></div>
+    <div class="card"><h3>Import records</h3>
+      <p class="note">Load a records file Claude prepared from contractor schedules, or a backup. Importing the same file twice won't create duplicates.</p>
+      <label for="sFile" class="note">Choose a file (.json)<input id="sFile" type="file" accept=".json,application/json"></label>
+      <p class="note" id="sFileMsg"></p></div>
+    <div class="card"><h3>Export and backup</h3>
+      <p class="note">Export to Excel gives one workbook with tabs for sites, visits and partners.</p>
+      <div class="btnrow"><button class="btn" id="sXlsx" type="button">Export to Excel</button><button class="btn ghost" id="sCopy" type="button">Copy backup to clipboard</button></div>
+      <label for="sRestore" class="note">Restore from a backup: paste it here<textarea id="sRestore" placeholder="Paste backup text"></textarea></label>
+      <div class="btnrow"><button class="btn ghost" id="sRestoreBtn" type="button">Restore backup</button></div>
+    </div>`;
+  $("#sSave").onclick=async()=>{ try{ await store.save("settings",{key:"overdue_days",value:Number($("#sOver").value)||60}); toast("Saved"); }catch(e){} };
+  if(store.mode==="cloud") $("#sOut").onclick=async()=>{ await store.sb.auth.signOut(); location.reload(); };
+  else $("#sConnect").onclick=connectCloud;
+  $("#sXlsx").onclick=exportXlsx;
+  $("#sFile").onchange=async e=>{
+    const f=e.target.files[0], msg=$("#sFileMsg"); if(!f) return;
+    try{
+      const d=JSON.parse(await f.text()); let n=0, skip=0, gone=0;
+      msg.textContent="Importing…";
+      // invoice files replace the planned (schedule) visits for the same month and regions
+      const sup=d.supersede_schedule;
+      if(sup && sup.month){
+        const regs=new Set(sup.regions||[]);
+        const old=store.data.visits.filter(v=>v.source==="Contractor schedule" && (v.visit_date||"").startsWith(sup.month) && (!regs.size || regs.has(String(BYID[v.site_id]?.reg)) || BYID[v.site_id]?.cat==="FT"));
+        for(const v of old){ await store.remove("visits",v.id); gone++; }
+      }
+      for(const t of TABLES) for(const r of (Array.isArray(d[t])?d[t]:[])){ if(r.ex) continue; if(r.site_id && !BYID[r.site_id]){ skip++; continue; } await store.save(t,r); n++; }
+      const done=`Imported ${n} records${gone?`, replaced ${gone} planned visits`:""}${skip?`, skipped ${skip} for sites not in the list`:""}.`; refresh(); const m2=$("#sFileMsg"); if(m2) m2.textContent=done; toast(done);
+    }catch(err){ msg.textContent="That file couldn't be read. Make sure it's a .json records file from this app or from Claude."; }
+  };
+  $("#sCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText(JSON.stringify(store.data)); toast("Backup copied. Paste it somewhere safe."); }catch(e){ toast("Couldn't copy here. Use Export to Excel instead."); } };
+  $("#sRestoreBtn").onclick=async()=>{ try{ const d=JSON.parse($("#sRestore").value); for(const t of TABLES) for(const r of (d[t]||[])) if(!r.ex) await store.save(t,r); toast("Backup restored"); refresh(); }catch(e){ toast("That doesn't look like a backup from this app."); } };
+}
+async function connectCloud(){
+  const url=$("#sUrl").value.trim(), key=$("#sKey").value.trim(), email=$("#sEmail").value.trim(), pw=$("#sPw").value, err=$("#sErr");
+  err.hidden=true;
+  if(!window.supabase){ err.hidden=false; err.textContent="The Supabase library didn't load. This works once the app is on GitHub Pages."; return; }
+  try{
+    const sb=window.supabase.createClient(url,key);
+    const {error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error) throw error;
+    lsSet("cst.cloud",{url,key});
+    const local=JSON.parse(JSON.stringify(store.data)); store.sb=sb; store.mode="cloud";
+    for(const t of TABLES) for(const r of local[t]) await store.save(t,r);
+    await store.loadCloud(); $("#modeChip").textContent="Synced"; toast("Connected. Records now sync."); refresh();
+  }catch(e){ err.hidden=false; err.textContent="Couldn't connect: "+(e.message||e)+". Check the URL, key, email and password."; }
+}
+function exportXlsx(){
+  if(!window.XLSX){ toast("The Excel library didn't load."); return; }
+  const wb=XLSX.utils.book_new();
+  const add=(name,rows)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{note:"No records"}]),name);
+  const st=stats();
+  add("Sites",SITES.map(s=>({site_id:s.id,type:CAT[s.cat],subtype:s.sub||"",name:s.name,address:s.addr||"",ward:s.ward||"",region:s.reg||"",contractor:contractorFor(s),maintained_by:s.by||"",maintenance:s.mt||"",sq_yd:s.sqyd??"",lat:s.lat,lon:s.lon,condition:condOf(s.id),last_visit:st[s.id].last||""})));
+  const j=r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,Array.isArray(v)?v.join(", "):v]));
+  add("Visits",store.data.visits.map(v=>({...j(v),site_name:siteName(v.site_id)})));
+  add("Partners",store.data.partners.map(j));
+  try{ XLSX.writeFile(wb,`CDOT_Site_Tracker_${today()}.xlsx`); }catch(e){ toast("Downloads are blocked in this preview. Export works once the app is on GitHub Pages."); }
+}
+
+/* ---------- routing + events ---------- */
+const VIEWS=["map","dashboard","work","partners","settings"];
+const curView=()=>VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):"map";
+function route(){
+  const v=curView();
+  document.querySelectorAll(".view").forEach(el=>el.classList.toggle("on",el.id==="v-"+v));
+  document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===v));
+  if(v!=="map" && isPhone()) $("#sitePanel").classList.remove("on");
+  if(v==="map" && map) setTimeout(()=>map.invalidateSize(),0);
+  render(v);
+}
+function render(v){ ({map:renderMap,dashboard:renderDash,work:renderWork,partners:renderPartners,settings:renderSettings})[v](); }
+function refresh(){ const v=curView(); render(v); if(selected && v==="map" && $("#sitePanel").classList.contains("on")) openSite(selected,false); }
+
+document.addEventListener("click",e=>{
+  if(e.target.id==="clearHere"){ e.preventDefault(); HERE=null; if(hereMarker&&map) map.removeLayer(hereMarker); renderMap(); return; }
+  const un=e.target.closest("[data-unpick]"); if(un){ picked=picked.filter(x=>x!==un.dataset.unpick); drawChips(); return; }
+  const nw=e.target.closest("[data-new]"); if(nw){ openForm(nw.dataset.new,null,nw.dataset.site); return; }
+  const sl=e.target.closest("[data-site]"); if(sl){ e.preventDefault(); if(curView()!=="map") location.hash="map"; setTimeout(()=>openSite(sl.dataset.site),0); return; }
+  const ed=e.target.closest("[data-edit]"); if(ed){ const r=store.data[ed.dataset.edit].find(x=>x.id===ed.dataset.id); if(r) openForm(ed.dataset.edit,r); return; }
+  const fl=e.target.closest("[data-flag]"); if(fl){ showOnMap({fFlag:fl.dataset.flag}); return; }
+  const rg=e.target.closest("[data-reg]"); if(rg){ showOnMap({fReg:rg.dataset.reg}); return; }
+  const ct=e.target.closest("[data-cat]"); if(ct){ showOnMap({fCat:ct.dataset.cat}); return; }
+  const go=e.target.closest("[data-go]"); if(go){ location.hash=go.dataset.go; return; }
+  const li=e.target.closest("#siteList li[data-id]"); if(li){ openSite(li.dataset.id); return; }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if($("#modal").classList.contains("on")) $("#modal").classList.remove("on"); else if(selected) closeSite(); }});
+$("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") $("#modal").classList.remove("on"); });
+["fSearch","fCat","fReg","fBy","fWard","fFlag"].forEach(id=>$("#"+id).addEventListener("input",renderMap));
+["wSearch","wReg","wMonth","wSrc"].forEach(id=>$("#"+id).addEventListener("input",renderWork));
+$("#mMap").onclick=()=>setMapMode("map"); $("#mList").onclick=()=>setMapMode("list");
+$("#nearMe").onclick=nearMe;
+window.addEventListener("hashchange",route);
+window.addEventListener("resize",()=>{ if(map) map.invalidateSize(); });
+
+/* ---------- start ---------- */
+(async function start(){
+  try{ SITES = await (await fetch("sites.json")).json(); }
+  catch(e){ document.body.innerHTML='<p style="padding:20px">Couldn\'t load sites.json. Make sure it sits next to index.html.</p>'; return; }
+  SITES.forEach(s=>BYID[s.id]=s);
+  const bys=[...new Set(SITES.map(s=>s.by).filter(Boolean))].sort();
+  $("#fBy").innerHTML+=bys.map(b=>`<option>${esc(b)}</option>`).join("");
+  const wards=[...new Set(SITES.map(s=>String(s.ward)).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+  $("#fWard").innerHTML+=wards.map(w=>`<option value="${esc(w)}">Ward ${esc(w)}</option>`).join("");
+  $("#siteOptions").innerHTML=SITES.map(s=>`<option value="${esc(siteLabel(s))}">`).join("");
+  await store.init();
+  $("#modeChip").textContent = store.mode==="cloud" ? "Synced" : "Local mode · this browser only";
+  initMap(); route();
+  try{ if("serviceWorker" in navigator && location.protocol==="https:" && window.top===window) navigator.serviceWorker.register("sw.js").catch(()=>{}); }catch(e){}
+})();
+</script>
+</body>
+</html>
