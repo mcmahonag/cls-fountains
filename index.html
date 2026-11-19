@@ -218,7 +218,7 @@ td.r,th.r{text-align:right}
         <label for="fReg">Region<select id="fReg"><option value="">All regions</option><option value="1">Region 1</option><option value="2">Region 2</option><option value="3">Region 3</option><option value="5">Region 5</option><option value="6">Region 6</option><option value="Citywide">Fountains (citywide)</option></select></label>
         <label for="fBy">Maintained by<select id="fBy"><option value="">Anyone</option></select></label>
         <label for="fWard">Ward<select id="fWard"><option value="">All wards</option></select></label>
-        <label class="wide" for="fFlag">Show only<select id="fFlag"><option value="">Everything</option><option value="overdue">CDOT sites overdue for a visit</option><option value="nopartner">Community sites with no partner</option><option value="poor">Condition: Poor</option></select></label>
+        <label class="wide" for="fFlag">Show only<select id="fFlag"><option value="">Everything</option><option value="overdue">CDOT sites overdue for a visit</option><option value="nopartner">Community sites with no partner</option><option value="poor">Condition: Poor</option><option value="sign">Sign needed</option><option value="unsure">Notes say "Community or CDOT?"</option></select></label>
       </div>
       <div class="legend">
         <span><span class="dot" style="background:var(--accent);border-color:var(--accent)"></span>Traffic calming</span>
@@ -415,7 +415,9 @@ function filtered(st){
     if(flag==="overdue" && !overdue(s,st)) return false;
     if(flag==="nopartner" && !(isCommunity(s) && !st[s.id].partner)) return false;
     if(flag==="poor" && condOf(s.id)!=="Poor") return false;
-    if(q){ const hay=(s.id+" "+s.name+" "+(s.addr||"")+" "+(s.sub||"")).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(flag==="sign" && !/sign needed/i.test(s.tnote||"")) return false;
+    if(flag==="unsure" && !/community or cdot/i.test(s.tnote||"")) return false;
+    if(q){ const hay=(s.id+" "+s.name+" "+(s.addr||"")+" "+(s.sub||"")+" "+(s.tnote||"")).toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
   });
   if(HERE) out.sort((a,b)=>distMi(a)-distMi(b));
@@ -477,6 +479,7 @@ function openSite(id, zoom){
         ${fact("Links",links)}
         ${fact("Inside",parent?`<a href="#" data-site="${parent.id}">${esc(parent.name)}</a>`:"")}
         ${fact("Also here",kids.map(k=>`<a href="#" data-site="${k.id}">${esc(k.name)}</a>`).join(", "))}
+        ${fact("Your notes",esc(s.tnote))}
         ${fact("Data note",esc(s.note))}
       </dl>
       <div class="form">
