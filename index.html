@@ -96,6 +96,14 @@ textarea{min-height:80px;resize:vertical}
 .mapbtns{position:absolute;right:12px;top:12px;z-index:1000;display:flex;flex-direction:column;gap:8px}
 .mapbtns button{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;min-height:40px}
 .notiles{position:absolute;right:12px;bottom:12px;z-index:900;background:var(--panel);border:1px solid var(--line);padding:6px 10px;border-radius:6px;font-size:.8rem;color:var(--muted);max-width:280px;display:none}
+.leaflet-control-layers{background:var(--panel);color:var(--ink);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.3);font:14px var(--body)}
+.leaflet-control-layers-toggle{display:block;width:40px;height:40px;background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f5d50' stroke-width='2'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5zM2 13l10 5 10-5M2 17.5l10 5 10-5'/%3E%3C/svg%3E") center/22px no-repeat;border-radius:8px}
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle{display:none}
+.leaflet-control-layers-list{display:none;padding:8px 12px}
+.leaflet-control-layers-expanded .leaflet-control-layers-list{display:block}
+.leaflet-control-layers-base label{display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer}
+.leaflet-control-layers-base input{width:auto;min-height:0;margin:0}
+.leaflet-control-layers-separator,.leaflet-control-layers-overlays{display:none}
 .reglabel{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);opacity:.55;pointer-events:none}
 .mswitch{display:none}
 
@@ -357,9 +365,22 @@ try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{C
 function initMap(){
   if (!window.L){ $("#map").innerHTML='<p class="empty" style="padding:20px">The map didn\'t load. Check your connection and reload.</p>'; return; }
   map = L.map("map",{preferCanvas:true, zoomControl:!isPhone(), tap:true}).setView([41.83,-87.68],11);
-  const tiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{maxZoom:20,subdomains:"abcd",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
-  let ok=false; tiles.on("tileload",()=>{ok=true;$("#noTiles").style.display="none";});
-  tiles.on("tileerror",()=>{ if(!ok) $("#noTiles").style.display="block"; });
+  // Basemaps that need no API key
+  const esri="https://server.arcgisonline.com/ArcGIS/rest/services/";
+  const bases={
+    "Light gray": L.layerGroup([
+      L.tileLayer(esri+"Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",{maxZoom:16,maxNativeZoom:16,attribution:"Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors"}),
+      L.tileLayer(esri+"Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:16})]),
+    "Streets": L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}),
+    "Satellite": L.tileLayer(esri+"World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:19,attribution:"Imagery &copy; Esri, Maxar, Earthstar Geographics"})
+  };
+  let baseName=lsGet("cst.base","Streets"); if(!bases[baseName]) baseName="Streets";
+  bases[baseName].addTo(map);
+  L.control.layers(bases,null,{position:"bottomleft",collapsed:true}).addTo(map);
+  map.on("baselayerchange",e=>lsSet("cst.base",e.name));
+  let ok=false;
+  const watch=l=>{ (l.eachLayer?(f=>l.eachLayer(f)):(f=>f(l)))(t=>{ t.on("tileload",()=>{ok=true;$("#noTiles").style.display="none";}); t.on("tileerror",()=>{ if(!ok) $("#noTiles").style.display="block"; }); }); };
+  Object.values(bases).forEach(watch);
   fetch("regions.geojson").then(r=>r.ok?r.json():null).then(gj=>{
     if(!gj) return;
     const fills={"1":"#2f5d50","2":"#2a6f97","3":"#7a5ea8","5":"#b7791f","6":"#b4372f"};
