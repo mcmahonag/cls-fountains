@@ -56,3 +56,33 @@ end $$;
 
 -- If you created the tables before the schedule import was added, this adds the new column:
 alter table visits add column if not exists source text;
+
+-- Mall and plaza tree inventory (added November 2026). Safe to run again.
+create table if not exists trees (
+  id uuid primary key default gen_random_uuid(),
+  site_id text not null,          -- the mall or plaza, e.g. MP-013
+  tree_no text,                   -- numbered within each plaza
+  status text,                    -- Tree, Vacant planting site, Stump
+  species text,
+  botanical text,
+  dbh numeric,                    -- inches
+  stems numeric,
+  height text,                    -- class, e.g. 15–30 ft
+  spread numeric,                 -- canopy spread, feet
+  condition text,                 -- Good, Fair, Poor, Critical, Dead
+  risk text,                      -- Low, Moderate, High, Extreme
+  site_type text,                 -- tree pit, grate, planter, bed, lawn, parkway
+  planted_year numeric,
+  conflicts text[] not null default '{}',
+  needs text[] not null default '{}',
+  pests text,
+  inspected date,
+  notes text,
+  lat double precision,
+  lon double precision,
+  loc_note text,
+  created_at timestamptz not null default now()
+);
+alter table trees enable row level security;
+drop policy if exists "signed in full access" on trees;
+create policy "signed in full access" on trees for all to authenticated using (true) with check (true);

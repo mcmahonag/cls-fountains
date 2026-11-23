@@ -106,6 +106,14 @@ textarea{min-height:80px;resize:vertical}
 .leaflet-control-layers-separator,.leaflet-control-layers-overlays{display:none}
 .reglabel{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);opacity:.55;pointer-events:none}
 .mswitch{display:none}
+.placing{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;z-index:1200;background:var(--ink);color:var(--paper);border-radius:10px;padding:10px 14px;display:none;gap:10px;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.35);font-size:.95rem;max-width:calc(100% - 24px);flex-wrap:wrap}
+.placing.on{display:flex}
+.placing button{border:1px solid currentColor;background:none;color:inherit;border-radius:6px;padding:6px 10px;font-weight:600;cursor:pointer;min-height:36px}
+#map.picking{cursor:crosshair}
+.treecount{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px}
+.treecount div{border:1px solid var(--line);border-radius:6px;padding:6px 8px;text-align:center;font-size:.8rem;color:var(--muted)}
+.treecount b{display:block;font:700 1.3rem var(--display);color:var(--ink)}
+.pill.Critical,.pill.Dead{color:var(--bad)}.pill.Vacant{color:var(--muted)}
 
 /* Site panel */
 #sitePanel{position:absolute;left:0;top:0;bottom:0;width:370px;background:var(--panel);border-right:1px solid var(--line);z-index:1100;display:none;flex-direction:column}
@@ -182,6 +190,7 @@ td.r,th.r{text-align:right}
   .rail{position:absolute;inset:0;width:auto;border-right:none;z-index:1040;padding-top:54px;display:none}
   #v-map.list .rail{display:flex}
   .mapbtns{top:62px}
+  .placing{bottom:12px}
   .filters{grid-template-columns:1fr 1fr}
   #sitePanel{position:fixed;inset:0;bottom:calc(58px + var(--safe-b));width:auto;border-right:none;z-index:2500;padding-top:var(--safe-t)}
   #modal{padding:0;align-items:stretch}
@@ -206,6 +215,7 @@ td.r,th.r{text-align:right}
   <a href="#dashboard" data-v="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
   <a href="#work" data-v="work"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5h11M9 12h11M9 19h11M4 5l1 1 2-2M4 12l1 1 2-2M4 19l1 1 2-2"/></svg>Work log</a>
   <a href="#partners" data-v="partners"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.3-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.5c2.6.2 4.4 2 5 5"/></svg>Partners</a>
+  <a href="#trees" data-v="trees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22v-7M12 15c-4.5 0-7-2.6-7-6a7 7 0 0 1 14 0c0 3.4-2.5 6-7 6z"/><path d="M9 18h6"/></svg>Trees</a>
   <a href="#settings" data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Settings</a>
 </nav>
 <main>
@@ -225,6 +235,7 @@ td.r,th.r{text-align:right}
         <span><span class="dot" style="background:var(--plaza);border-color:var(--plaza)"></span>Mall / plaza</span>
         <span><span class="dot" style="background:var(--water);border-color:var(--water)"></span>Fountain</span>
         <span><span class="dot" style="background:transparent;border-color:var(--muted)"></span>Community maintained</span>
+        <label for="treeToggle"><input type="checkbox" id="treeToggle" checked>Trees</label>
         <label id="regToggleWrap" for="regToggle" style="display:none"><input type="checkbox" id="regToggle" checked>Shade regions</label>
       </div>
       <div class="listhead"><span class="num" id="listHead"></span><span id="sortNote"></span></div>
@@ -232,6 +243,7 @@ td.r,th.r{text-align:right}
     </div>
     <div id="map" role="region" aria-label="Map of sites"></div>
     <div class="mapbtns"><button type="button" id="nearMe">Near me</button></div>
+    <div class="placing" id="placing" role="status"><span id="placingMsg">Tap the tree's location on the map</span><button type="button" id="placeGps">Use my GPS</button><button type="button" id="placeCancel">Cancel</button></div>
     <div class="notiles" id="noTiles">Street map tiles can't load in this preview. They show once the app is on GitHub Pages.</div>
     <aside id="sitePanel" aria-label="Site details"></aside>
   </section>
@@ -250,6 +262,18 @@ td.r,th.r{text-align:right}
   <section class="view" id="v-partners"><div class="scroll"><div class="wrap">
     <div class="toolbar"><h2>Community partners</h2><button class="btn" data-new="partners">Add a partner</button></div>
     <div id="pTable"></div></div></div></section>
+  <section class="view" id="v-trees"><div class="scroll"><div class="wrap">
+    <div class="toolbar"><h2>Tree inventory</h2><button class="btn ghost" id="tExport" type="button">Export trees to Excel</button></div>
+    <p class="note">Malls and plazas. Open a plaza on the map and tap <strong>Add tree</strong>, then tap the tree on the satellite view or use your GPS.</p>
+    <div id="tSummary"></div>
+    <div class="filters" style="border:none;padding:0;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <label for="tSearch">Search<input id="tSearch" type="search" placeholder="Species, plaza, tree ID"></label>
+      <label for="tSite">Plaza<select id="tSite"><option value="">All plazas</option></select></label>
+      <label for="tCond">Condition<select id="tCond"><option value="">Any</option></select></label>
+      <label for="tNeed">Work needed<select id="tNeed"><option value="">Any</option><option value="__any">Any work needed</option></select></label>
+    </div>
+    <p class="note" id="tCount"></p>
+    <div id="tTable"></div></div></div></section>
   <section class="view" id="v-settings"><div class="scroll"><div class="wrap" id="settingsBox"></div></div></section>
 </main>
 <datalist id="siteOptions"></datalist>
@@ -269,8 +293,35 @@ const REGIONS = ["1","2","3","5","6"];
 const CONTRACTORS = {"1":"A Safe Haven","2":"Christy Webber","3":"Lizzette Medina","5":"Lizzette Medina","6":"Christy Webber"};
 const FOUNTAIN_CONTRACTOR = "Fountain Pros";
 const contractorFor = s => !s ? "" : s.cat==="FT" ? FOUNTAIN_CONTRACTOR : (CONTRACTORS[String(s.reg)] || "");
-const contractLabel = s => !s ? "" : s.cat==="FT" ? `Citywide fountain contract (${FOUNTAIN_CONTRACTOR})` : (CONTRACTORS[String(s.reg)] ? `Region ${s.reg} landscape (${CONTRACTORS[String(s.reg)]})` : "");
-const TABLES = ["visits","partners","site_notes","settings"];
+const contractLabel = s => !s ? "" : s.cat==="FT" ? `Citywide fountain contract (${FOUNTAIN_CONTRACTOR})` : (CONTRACTORS[String(s.reg)] ? `CLS Region ${s.reg} (${CONTRACTORS[String(s.reg)]})` : "");
+const TABLES = ["visits","partners","site_notes","settings","trees"];
+/* Tree inventory */
+const SPECIES = [
+ ["Honeylocust","Gleditsia triacanthos var. inermis"],["Swamp white oak","Quercus bicolor"],["Bur oak","Quercus macrocarpa"],["Red oak","Quercus rubra"],
+ ["White oak","Quercus alba"],["Chinkapin oak","Quercus muehlenbergii"],["English oak","Quercus robur"],["Shingle oak","Quercus imbricaria"],
+ ["Kentucky coffeetree","Gymnocladus dioicus"],["Hackberry","Celtis occidentalis"],["American elm (hybrid)","Ulmus americana"],["Hybrid elm","Ulmus spp."],
+ ["Littleleaf linden","Tilia cordata"],["American linden","Tilia americana"],["Silver linden","Tilia tomentosa"],["Ginkgo","Ginkgo biloba"],
+ ["Japanese tree lilac","Syringa reticulata"],["Callery pear","Pyrus calleryana"],["Crabapple","Malus spp."],["Serviceberry","Amelanchier spp."],
+ ["Eastern redbud","Cercis canadensis"],["Hawthorn","Crataegus spp."],["Amur maackia","Maackia amurensis"],["Hophornbeam","Ostrya virginiana"],
+ ["Musclewood","Carpinus caroliniana"],["European hornbeam","Carpinus betulus"],["London planetree","Platanus x acerifolia"],["Sycamore","Platanus occidentalis"],
+ ["Freeman maple","Acer x freemanii"],["Red maple","Acer rubrum"],["Silver maple","Acer saccharinum"],["Sugar maple","Acer saccharum"],
+ ["Norway maple","Acer platanoides"],["Hedge maple","Acer campestre"],["Miyabe maple","Acer miyabei"],["Amur maple","Acer ginnala"],
+ ["Green ash","Fraxinus pennsylvanica"],["White ash","Fraxinus americana"],["Japanese zelkova","Zelkova serrata"],["Turkish filbert","Corylus colurna"],
+ ["Baldcypress","Taxodium distichum"],["Dawn redwood","Metasequoia glyptostroboides"],["Katsura tree","Cercidiphyllum japonicum"],["Black gum","Nyssa sylvatica"],
+ ["Tuliptree","Liriodendron tulipifera"],["Catalpa","Catalpa speciosa"],["Ohio buckeye","Aesculus glabra"],["Horsechestnut","Aesculus hippocastanum"],
+ ["River birch","Betula nigra"],["Cottonwood","Populus deltoides"],["Black locust","Robinia pseudoacacia"],["Mulberry","Morus spp."],
+ ["Tree of heaven","Ailanthus altissima"],["Siberian elm","Ulmus pumila"],["Eastern white pine","Pinus strobus"],["Austrian pine","Pinus nigra"],
+ ["Norway spruce","Picea abies"],["Colorado spruce","Picea pungens"],["Arborvitae","Thuja occidentalis"],["Juniper","Juniperus spp."],
+ ["Magnolia","Magnolia spp."],["Unknown","Unknown"]];
+const SP_BOT = Object.fromEntries(SPECIES);
+const T_STATUS = ["Tree","Vacant planting site","Stump"];
+const T_COND = ["Good","Fair","Poor","Critical","Dead"];
+const T_RISK = ["Low","Moderate","High","Extreme"];
+const T_HEIGHT = ["Under 15 ft","15–30 ft","30–45 ft","45–60 ft","Over 60 ft"];
+const T_SITE = ["Tree pit (open)","Tree pit with grate","Raised planter","Planter box / container","Planting bed","Lawn / turf","Parkway"];
+const T_CONFLICT = ["Overhead wires","Sidewalk heave","Sightline / signs","Light pole","Building / structure","Grate or guard girdling","Girdling roots","Vehicle / mower damage","Compacted soil"];
+const T_NEED = ["Prune – structural","Prune – clearance","Deadwood removal","Remove","Stump grind","Stake / strap removal","Grate or guard adjust","Water","Mulch","Pest / disease treatment","Plant"];
+const T_PESTS = ["None seen","EAB signs","Cankers / decay","Leaf spot / scorch","Borers","Scale / insects","Other"];
 const KEYS = {site_notes:"site_id", settings:"key"};
 const DEFAULTS = {overdue_days:60};
 
@@ -312,7 +363,10 @@ const store = {
   async loadCloud(){
     for (const t of TABLES){
       const {data, error} = await this.sb.from(t).select("*");
-      if (error) throw error;
+      if (error){
+        if (t==="trees"){ this.data[t]=[]; setTimeout(()=>toast("Your Supabase project needs the new trees table. Run the latest schema.sql once."),800); continue; }
+        throw error;
+      }
       this.data[t] = data || [];
     }
   },
@@ -358,6 +412,58 @@ function stats(){
 function overdue(s, st){ if(!isCDOT(s)) return false; const d=daysSince(st[s.id].last); return d===null || d>store.setting("overdue_days"); }
 function distMi(s){ if(!HERE) return null; const dy=(s.lat-HERE[0])*69.0, dx=(s.lon-HERE[1])*51.5; return Math.sqrt(dx*dx+dy*dy); }
 
+/* ---------- trees ---------- */
+let pendingLoc=null, placing=null, treeLayer=null, treeMarkers={};
+const treesAt = id => store.data.trees.filter(t=>t.site_id===id).sort((a,b)=>String(a.tree_no||"").localeCompare(String(b.tree_no||""),undefined,{numeric:true}));
+function nextTreeNo(sid){ const n=store.data.trees.filter(t=>t.site_id===sid).map(t=>parseInt(String(t.tree_no||"").replace(/\D/g,""))||0); return String((n.length?Math.max(...n):0)+1); }
+const plural = (n,w) => `${n} ${w}${n===1?"":"s"}`;
+const treeLabel = t => `${t.site_id}-T${String(t.tree_no||"?").padStart(2,"0")}`;
+const condColor = c => ({Good:"#2e7d4f",Fair:"#b7791f",Poor:"#c2571a",Critical:"#b4372f",Dead:"#5b2a2a"})[c] || "#4d6b5f";
+function drawTrees(){
+  if(!map || !window.L) return;
+  if(!treeLayer){ treeLayer=L.layerGroup(); }
+  treeLayer.clearLayers(); treeMarkers={};
+  store.data.trees.forEach(t=>{
+    if(t.lat==null||t.lon==null) return;
+    const vac=t.status!=="Tree";
+    const m=L.circleMarker([t.lat,t.lon],{radius:vac?5:6,weight:2,color:vac?"#6b7b74":"#ffffff",fillColor:vac?"#ffffff":condColor(t.condition),fillOpacity:vac?0.6:0.95,dashArray:vac?"2 3":null,pane:"markerPane"});
+    m.bindTooltip(esc(`${treeLabel(t)} · ${t.status==="Tree"?(t.species||"Unknown species"):t.status}${t.dbh?` · ${t.dbh}"`:""}`));
+    m.on("click",ev=>{ if(placing) return; L.DomEvent.stop(ev); openForm("trees",t); });
+    m.addTo(treeLayer); treeMarkers[t.id]=m;
+  });
+  const want=$("#treeToggle").checked && map.getZoom()>=15;
+  if(want && !map.hasLayer(treeLayer)) treeLayer.addTo(map);
+  if(!want && map.hasLayer(treeLayer)) map.removeLayer(treeLayer);
+}
+function startPlacing(siteId, existing){
+  const s=BYID[siteId]; if(!s){ toast("Pick a plaza first."); return; }
+  if(curView()!=="map") location.hash="map";
+  if(isPhone()) setMapMode("map");
+  placing={siteId, existing};
+  $("#placingMsg").textContent = existing ? `Tap the new spot for tree ${treeLabel(existing)}` : `Tap the tree's location at ${s.name}`;
+  $("#placing").classList.add("on");
+  if(map){ $("#map").classList.add("picking"); map.setView([s.lat,s.lon], Math.max(map.getZoom(),19)); setTimeout(()=>map.invalidateSize(),0); }
+  if(isPhone()) $("#sitePanel").classList.remove("on");
+}
+function stopPlacing(){ placing=null; $("#placing").classList.remove("on"); $("#map").classList.remove("picking"); }
+async function placeAt(lat,lon){
+  if(!placing) return;
+  const {siteId, existing}=placing; stopPlacing();
+  if(existing){ try{ const r={...existing,lat:+lat.toFixed(7),lon:+lon.toFixed(7)}; delete r.loc_note; await store.save("trees",r); toast("Tree moved"); refresh(); drawTrees(); }catch(e){} return; }
+  pendingLoc=[+lat.toFixed(7),+lon.toFixed(7)];
+  openForm("trees",null,siteId);
+}
+function placeByGps(){
+  if(!navigator.geolocation){ toast("Location isn't available on this device."); return; }
+  $("#placingMsg").textContent="Getting your location…";
+  try{ navigator.geolocation.getCurrentPosition(p=>{
+      const acc=Math.round(p.coords.accuracy||0);
+      if(acc>15) toast(`GPS accuracy is about ${acc} m. Tap the map to fine-tune if needed.`);
+      placeAt(p.coords.latitude,p.coords.longitude);
+    },()=>{ toast("Couldn't get your location. Tap the map instead."); $("#placingMsg").textContent="Tap the tree's location on the map"; },{enableHighAccuracy:true,timeout:15000});
+  }catch(e){ toast("Location is blocked here. Tap the map instead."); }
+}
+
 /* ---------- map ---------- */
 let map, markers = {}, selected = null, COLORS = null, hereMarker = null;
 function colorFor(s){ if(!COLORS){ const v=getComputedStyle(document.documentElement); COLORS={TC:v.getPropertyValue("--accent").trim(),MP:v.getPropertyValue("--plaza").trim(),FT:v.getPropertyValue("--water").trim()}; } return COLORS[s.cat]; }
@@ -392,9 +498,11 @@ function initMap(){
     tg.addEventListener("change",()=>{ show(tg.checked); lsSet("cst.regions", tg.checked); });
     show(tg.checked);
   }).catch(()=>{});
+  map.on("click",e=>{ if(placing) placeAt(e.latlng.lat,e.latlng.lng); });
+  map.on("zoomend",drawTrees);
   SITES.forEach(s=>{
     const m = L.circleMarker([s.lat,s.lon],{radius:s.cat==="TC"?6:8,weight:2});
-    m.bindTooltip(esc(s.name)); m.on("click",()=>openSite(s.id,false)); markers[s.id]=m;
+    m.bindTooltip(esc(s.name)); m.on("click",ev=>{ if(placing){ placeAt(ev.latlng.lat,ev.latlng.lng); return; } openSite(s.id,false); }); markers[s.id]=m;
   });
 }
 function styleMarker(s){
@@ -489,6 +597,7 @@ function openSite(id, zoom){
       </div>
       <h3>Work log (${visits.length})</h3>
       <div class="hist">${visits.map(v=>`<div class="item" data-edit="visits" data-id="${v.id}"><div class="top"><span>${esc((v.work_types||[]).join(", ")||"Visit")}${schedPill(v)}</span><span class="num">${fmtDate(v.visit_date)}</span></div><div class="muted">${esc(v.done_by||"")}${v.hours?` · ${v.hours} hr`:""}</div>${v.notes?`<div class="muted">${esc(v.notes)}</div>`:""}</div>`).join("")||'<p class="empty">No visits logged.</p>'}</div>
+      ${s.cat==="MP"||treesAt(id).length?treeSection(s):""}
       <h3>Partners (${partners.length})</h3>
       <div class="hist">${partners.map(p=>`<div class="item" data-edit="partners" data-id="${p.id}"><div class="top"><span>${esc(p.name)}</span><span class="muted">${esc(p.partner_type||"")}</span></div><div class="muted">${p.agreement_end?`Agreement through ${fmtDate(p.agreement_end)}`:"No agreement dates"}</div></div>`).join("")||`<p class="empty">No partner assigned.${isCommunity(s)?" This is a community-maintained site.":""}</p>`}</div>
     </div>`;
@@ -500,8 +609,28 @@ function openSite(id, zoom){
 }
 function closeSite(){ selected=null; $("#sitePanel").classList.remove("on"); renderMap(); if(map) setTimeout(()=>map.invalidateSize(),0); }
 
+function treeSection(s){
+  const ts=treesAt(s.id), live=ts.filter(t=>t.status==="Tree");
+  const by=c=>live.filter(t=>t.condition===c).length;
+  const need=live.filter(t=>(t.needs||[]).length).length, vac=ts.filter(t=>t.status==="Vacant planting site").length;
+  return `<h3>Trees (${live.length})</h3>
+    <div class="btnrow"><button class="btn" type="button" data-addtree="${s.id}">Add tree</button>${live.length?`<a class="btn ghost" href="#trees" data-treesite="${s.id}">See all in Trees</a>`:""}</div>
+    ${ts.length?`<div class="treecount"><div><b class="num">${by("Good")}</b>Good</div><div><b class="num">${by("Fair")}</b>Fair</div><div><b class="num">${by("Poor")+by("Critical")+by("Dead")}</b>Poor or worse</div><div><b class="num">${need}</b>Need work</div><div><b class="num">${vac}</b>Vacant sites</div></div>
+    <div class="hist">${ts.map(t=>`<div class="item" data-edit="trees" data-id="${t.id}"><div class="top"><span>${esc(t.status==="Tree"?(t.species||"Species not set"):t.status)}</span><span class="num muted">T${esc(t.tree_no||"?")}</span></div><div class="muted">${[t.dbh?t.dbh+'" DBH':"",t.condition?`<span class="pill ${esc(t.condition)}">${esc(t.condition)}</span>`:"",(t.needs||[]).join(", ")].filter(Boolean).join(" · ")}</div>${t.loc_note?`<div class="muted" style="color:var(--warn)">${esc(t.loc_note)}</div>`:""}</div>`).join("")}</div>`:
+    `<p class="empty">No trees inventoried yet. Tap Add tree, then tap each tree on the satellite map or stand next to it and use GPS.</p>`}`;
+}
+
 /* ---------- forms ---------- */
 const F = {
+  trees:{title:"tree", fields:[
+    {k:"site_id",l:"Plaza",t:"site",req:1,full:1},{k:"tree_no",l:"Tree no.",t:"text"},{k:"status",l:"What's here",t:"select",opts:T_STATUS,req:1},
+    {k:"species",l:"Species (common)",t:"text",list:SPECIES.map(x=>x[0]),full:1},{k:"botanical",l:"Botanical name",t:"text",full:1},
+    {k:"dbh",l:"DBH (in)",t:"number"},{k:"stems",l:"Stems",t:"number"},{k:"height",l:"Height",t:"select",opts:T_HEIGHT},{k:"spread",l:"Canopy spread (ft)",t:"number"},
+    {k:"condition",l:"Condition",t:"select",opts:T_COND},{k:"risk",l:"Risk rating",t:"select",opts:T_RISK},
+    {k:"site_type",l:"Planting site",t:"select",opts:T_SITE},{k:"planted_year",l:"Year planted",t:"number"},
+    {k:"conflicts",l:"Conflicts",t:"checks",opts:T_CONFLICT,full:1},{k:"needs",l:"Work needed",t:"checks",opts:T_NEED,full:1},
+    {k:"pests",l:"Pests / disease",t:"select",opts:T_PESTS},{k:"inspected",l:"Inspected",t:"date"},
+    {k:"notes",l:"Notes",t:"area",full:1},{k:"lat",l:"Latitude",t:"number"},{k:"lon",l:"Longitude",t:"number"}]},
   visits:{title:"visit", fields:[
     {k:"site_id",l:"Site",t:"site",req:1,full:1},{k:"visit_date",l:"Date",t:"date",req:1},{k:"done_by",l:"Done by",t:"text",list:["CDOT crew","A Safe Haven","Christy Webber","Lizzette Medina","Fountain Pros","Community partner"]},
     {k:"source",l:"Record type",t:"select",opts:["Confirmed","Invoice","Contractor schedule"]},{k:"work_types",l:"Work done",t:"checks",opts:WORK_TYPES,full:1},{k:"hours",l:"Hours",t:"number"},{k:"notes",l:"Notes",t:"area",full:1}]},
@@ -529,10 +658,12 @@ function openForm(t, rec, presetSite){
   if(isNew){
     if(t==="visits"){ rec.visit_date=today(); rec.source="Confirmed"; if(presetSite){ rec.site_id=presetSite; } }
     if(t==="partners" && presetSite) rec.site_ids=[presetSite];
+    if(t==="trees"){ rec.status="Tree"; rec.inspected=today(); if(presetSite) rec.site_id=presetSite; if(pendingLoc){ rec.lat=pendingLoc[0]; rec.lon=pendingLoc[1]; pendingLoc=null; } }
   }
   $("#dlg").innerHTML = `<div class="toolbar"><h2>${isNew?"New":"Edit"} ${def.title}</h2><button class="x" id="dlgX" aria-label="Close">×</button></div>
     <form class="form" id="frm" novalidate>${def.fields.map(f=>field(f,rec[f.k])).join("")}
     <p class="err full" id="frmErr" hidden></p>
+    ${t==="trees"&&!isNew?'<div class="btnrow full"><button class="btn ghost" type="button" id="treeMove">Move this tree on the map</button></div>':""}
     <div class="btnrow full"><button class="btn" type="submit">Save</button><button class="btn ghost" type="button" id="dlgCancel">Cancel</button>${isNew?"":'<span style="flex:1"></span><button class="btn danger" type="button" id="dlgDel">Delete</button>'}</div></form>`;
   $("#modal").classList.add("on"); $("#modal").scrollTop=0; drawChips();
   const close=()=>$("#modal").classList.remove("on");
@@ -541,10 +672,18 @@ function openForm(t, rec, presetSite){
   const siteIn=$("#f_site_id"), doneBy=$("#f_done_by");
   const fillContractor=()=>{ const s=BYID[parseSite(siteIn.value)]; if(s && doneBy && !doneBy.value && isCDOT(s)) doneBy.value=contractorFor(s); };
   if(siteIn){ siteIn.addEventListener("change",fillContractor); if(isNew) fillContractor(); }
+  if(t==="trees"){
+    const sp=$("#f_species"), bo=$("#f_botanical");
+    sp.addEventListener("change",()=>{ const b=SP_BOT[sp.value.trim()]; if(b && (!bo.value || Object.values(SP_BOT).includes(bo.value))) bo.value=b; });
+    const site=$("#f_site_id"), no=$("#f_tree_no");
+    const fillNo=()=>{ const sid=parseSite(site.value); if(sid && !no.value) no.value=nextTreeNo(sid); };
+    site.addEventListener("change",fillNo); if(isNew) fillNo();
+  }
   const multi=$("#f_site_ids"); if(multi) multi.addEventListener("change",()=>{ const id=parseSite(multi.value); if(id && !picked.includes(id)) picked.push(id); multi.value=""; drawChips(); });
+  const mv=$("#treeMove"); if(mv) mv.onclick=()=>{ close(); startPlacing(rec.site_id, rec); };
   if(!isNew) $("#dlgDel").onclick=async()=>{
     const b=$("#dlgDel"); if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Tap again to delete"; return; }
-    try{ await store.remove(t, rec.id); close(); toast("Deleted"); refresh(); }catch(e){}
+    try{ await store.remove(t, rec.id); close(); toast("Deleted"); refresh(); if(t==="trees") drawTrees(); }catch(e){}
   };
   $("#frm").onsubmit=async e=>{
     e.preventDefault(); const out={...rec}; const err=[];
@@ -557,8 +696,13 @@ function openForm(t, rec, presetSite){
       if(f.req && (v===null || (f.t==="number" && isNaN(v)))) err.push(`${f.l} is required.`);
       out[f.k]=v;
     }
+    if(t==="trees"){
+      if(out.lat==null || out.lon==null){ const s0=BYID[out.site_id]; if(s0){ out.lat=out.lat??s0.lat; out.lon=out.lon??s0.lon; out.loc_note="Placed at plaza center; move it to the tree"; } }
+      else delete out.loc_note;
+      if(out.status!=="Tree"){ /* vacant sites and stumps: keep only what applies */ }
+    }
     if(err.length){ const p=$("#frmErr"); p.hidden=false; p.textContent=err.join(" "); return; }
-    try{ await store.save(t,out); close(); toast("Saved"); refresh(); }catch(e){}
+    try{ await store.save(t,out); close(); toast("Saved"); refresh(); if(t==="trees") drawTrees(); }catch(e){}
   };
 }
 
@@ -586,6 +730,49 @@ function renderPartners(){
     <div class="cards">${rows.map(p=>`<div class="item" data-edit="partners" data-id="${p.id}"><div class="top"><span>${esc(p.name)}</span><span class="muted">${esc(p.partner_type||"")}</span></div><div class="muted">${esc(p.contact_name||"")}${p.contact_phone?" · "+esc(p.contact_phone):""}</div><div class="muted" style="${soon(p)?"color:var(--warn)":""}">${p.agreement_end?"Agreement through "+fmtDate(p.agreement_end):"No agreement dates"} · ${(p.site_ids||[]).length} site${(p.site_ids||[]).length===1?"":"s"}</div></div>`).join("")}</div>`;
 }
 
+function treeRows(){
+  const q=$("#tSearch").value.trim().toLowerCase(), site=$("#tSite").value, cond=$("#tCond").value, need=$("#tNeed").value;
+  return store.data.trees.filter(t=>{
+    if(site && t.site_id!==site) return false;
+    if(cond && t.condition!==cond) return false;
+    if(need==="__any" && !(t.needs||[]).length) return false;
+    if(need && need!=="__any" && !(t.needs||[]).includes(need)) return false;
+    if(q && !((t.species||"")+" "+(t.botanical||"")+" "+siteName(t.site_id)+" "+treeLabel(t)+" "+(t.notes||"")).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>siteName(a.site_id).localeCompare(siteName(b.site_id)) || String(a.tree_no).localeCompare(String(b.tree_no),undefined,{numeric:true}));
+}
+function renderTrees(){
+  const all=store.data.trees, live=all.filter(t=>t.status==="Tree");
+  const plazas=SITES.filter(s=>s.cat==="MP"), done=new Set(all.map(t=>t.site_id));
+  const sSel=$("#tSite"), sCur=sSel.value;
+  sSel.innerHTML='<option value="">All plazas</option>'+[...new Set([...plazas.map(s=>s.id),...all.map(t=>t.site_id)])].map(id=>BYID[id]).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}" ${s.id===sCur?"selected":""}>${esc(s.name)}${done.has(s.id)?` (${treesAt(s.id).filter(t=>t.status==="Tree").length})`:""}</option>`).join("");
+  if($("#tCond").options.length<2) $("#tCond").innerHTML+=T_COND.map(c=>`<option>${c}</option>`).join("");
+  if($("#tNeed").options.length<3) $("#tNeed").innerHTML+=T_NEED.map(c=>`<option>${esc(c)}</option>`).join("");
+  const sp={}; live.forEach(t=>{ const k=t.species||"Unknown"; sp[k]=(sp[k]||0)+1; });
+  const top=Object.entries(sp).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  $("#tSummary").innerHTML=`<div class="tiles">
+    <div class="tile"><span class="muted">Trees inventoried</span><span class="big num">${live.length}</span><span class="note">${plural(all.filter(t=>t.status==="Vacant planting site").length,"vacant planting site")} · ${plural(all.filter(t=>t.status==="Stump").length,"stump")}</span></div>
+    <div class="tile ${done.size<plazas.length?"warn":"good"}"><span class="muted">Plazas inventoried</span><span class="big num">${plazas.filter(s=>done.has(s.id)).length} <span style="font-size:1rem">of ${plazas.length}</span></span><span class="note">Plazas with at least one tree record</span></div>
+    <div class="tile ${live.some(t=>["Poor","Critical","Dead"].includes(t.condition))?"warn":"good"}"><span class="muted">Poor, critical or dead</span><span class="big num">${live.filter(t=>["Poor","Critical","Dead"].includes(t.condition)).length}</span><span class="note">${live.filter(t=>["High","Extreme"].includes(t.risk)).length} rated high or extreme risk</span></div>
+    <div class="tile"><span class="muted">Top species</span><span class="note" style="font-size:.9rem">${top.length?top.map(([k,v])=>`${esc(k)} <span class="num">(${v})</span>`).join("<br>"):"None yet"}</span></div></div>`;
+  const rows=treeRows();
+  $("#tCount").textContent = all.length ? `${rows.length} of ${all.length} records` : "";
+  if(!all.length){ $("#tTable").innerHTML='<p class="empty">No trees yet. Go to the Map, open a mall or plaza, and tap Add tree.</p>'; return; }
+  if(!rows.length){ $("#tTable").innerHTML='<p class="empty">No trees match these filters.</p>'; return; }
+  $("#tTable").innerHTML=`<div class="tablewrap hide-phone"><table><thead><tr><th>Tree</th><th>Plaza</th><th>Species</th><th class="r">DBH</th><th>Condition</th><th>Risk</th><th>Work needed</th><th>Inspected</th></tr></thead><tbody>${rows.map(t=>`<tr data-edit="trees" data-id="${t.id}"><td class="num">${esc(treeLabel(t))}</td><td>${esc(siteName(t.site_id))}</td><td>${esc(t.status==="Tree"?(t.species||""):t.status)}<div class="muted" style="font-style:italic">${esc(t.status==="Tree"?(t.botanical||""):"")}</div></td><td class="r num">${t.dbh??""}</td><td>${t.condition?`<span class="pill ${esc(t.condition)}">${esc(t.condition)}</span>`:""}</td><td>${esc(t.risk||"")}</td><td>${esc((t.needs||[]).join(", "))}</td><td class="num">${fmtDate(t.inspected)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="cards">${rows.map(t=>`<div class="item" data-edit="trees" data-id="${t.id}"><div class="top"><span>${esc(t.status==="Tree"?(t.species||"Species not set"):t.status)}</span><span class="num muted">${esc(treeLabel(t))}</span></div><div class="muted">${esc(siteName(t.site_id))}${t.dbh?` · ${t.dbh}" DBH`:""}${t.condition?` · ${esc(t.condition)}`:""}</div>${(t.needs||[]).length?`<div>${esc(t.needs.join(", "))}</div>`:""}</div>`).join("")}</div>`;
+}
+function exportTrees(rows){
+  if(!window.XLSX){ toast("The Excel library didn't load."); return; }
+  const wb=XLSX.utils.book_new();
+  const data=(rows||store.data.trees).map(t=>({tree_id:treeLabel(t),site_id:t.site_id,plaza:siteName(t.site_id),region:BYID[t.site_id]?.reg||"",ward:BYID[t.site_id]?.ward||"",
+    status:t.status||"",species:t.species||"",botanical:t.botanical||"",dbh_in:t.dbh??"",stems:t.stems??"",height:t.height||"",spread_ft:t.spread??"",condition:t.condition||"",risk:t.risk||"",
+    planting_site:t.site_type||"",year_planted:t.planted_year??"",conflicts:(t.conflicts||[]).join(", "),work_needed:(t.needs||[]).join(", "),pests:t.pests||"",
+    inspected:t.inspected||"",notes:t.notes||"",lat:t.lat,lon:t.lon}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data.length?data:[{note:"No trees yet"}]),"Trees");
+  try{ XLSX.writeFile(wb,`CLS_Plaza_Tree_Inventory_${today()}.xlsx`); }catch(e){ toast("Downloads are blocked in this preview. Export works on GitHub Pages."); }
+}
+
 /* ---------- dashboard ---------- */
 function renderDash(){
   const st=stats();
@@ -601,6 +788,7 @@ function renderDash(){
       <button class="tile ${od.length?"warn":"good"}" data-flag="overdue"><span class="muted">CDOT sites overdue for a visit</span><span class="big num">${od.length}</span><span class="note">of ${cdot.length} · ${never.length} with no visit logged · overdue after ${store.setting("overdue_days")} days</span></button>
       <button class="tile ${nop.length?"warn":"good"}" data-flag="nopartner"><span class="muted">Community sites with no partner</span><span class="big num">${nop.length}</span><span class="note">of ${comm.length} community-maintained</span></button>
       <button class="tile ${poor.length?"warn":"good"}" data-flag="poor"><span class="muted">Sites rated Poor</span><span class="big num">${poor.length}</span><span class="note">${SITES.filter(s=>condOf(s.id)).length} sites rated so far</span></button>
+      <button class="tile" data-go="trees"><span class="muted">Plaza trees inventoried</span><span class="big num">${store.data.trees.filter(t=>t.status==="Tree").length}</span><span class="note">${new Set(store.data.trees.map(t=>t.site_id)).size} of ${SITES.filter(s=>s.cat==="MP").length} plazas started</span></button>
       <button class="tile ${soon.length?"warn":"good"}" data-go="partners"><span class="muted">Partner agreements ending in 30 days</span><span class="big num">${soon.length}</span><span class="note">${store.data.partners.length} partners on file</span></button>
     </div>
     <div class="grid2">
@@ -646,7 +834,7 @@ function renderSettings(){
       <label for="sFile" class="note">Choose a file (.json)<input id="sFile" type="file" accept=".json,application/json"></label>
       <p class="note" id="sFileMsg"></p></div>
     <div class="card"><h3>Export and backup</h3>
-      <p class="note">Export to Excel gives one workbook with tabs for sites, visits and partners.</p>
+      <p class="note">Export to Excel gives one workbook with tabs for sites, visits, partners and trees.</p>
       <div class="btnrow"><button class="btn" id="sXlsx" type="button">Export to Excel</button><button class="btn ghost" id="sCopy" type="button">Copy backup to clipboard</button></div>
       <label for="sRestore" class="note">Restore from a backup: paste it here<textarea id="sRestore" placeholder="Paste backup text"></textarea></label>
       <div class="btnrow"><button class="btn ghost" id="sRestoreBtn" type="button">Restore backup</button></div>
@@ -697,11 +885,12 @@ function exportXlsx(){
   const j=r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,Array.isArray(v)?v.join(", "):v]));
   add("Visits",store.data.visits.map(v=>({...j(v),site_name:siteName(v.site_id)})));
   add("Partners",store.data.partners.map(j));
+  add("Trees",store.data.trees.map(t=>({tree_id:treeLabel(t),plaza:siteName(t.site_id),...j(t)})));
   try{ XLSX.writeFile(wb,`CDOT_Site_Tracker_${today()}.xlsx`); }catch(e){ toast("Downloads are blocked in this preview. Export works once the app is on GitHub Pages."); }
 }
 
 /* ---------- routing + events ---------- */
-const VIEWS=["map","dashboard","work","partners","settings"];
+const VIEWS=["map","dashboard","work","partners","trees","settings"];
 const curView=()=>VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):"map";
 function route(){
   const v=curView();
@@ -711,12 +900,14 @@ function route(){
   if(v==="map" && map) setTimeout(()=>map.invalidateSize(),0);
   render(v);
 }
-function render(v){ ({map:renderMap,dashboard:renderDash,work:renderWork,partners:renderPartners,settings:renderSettings})[v](); }
+function render(v){ ({map:()=>{renderMap();drawTrees();},dashboard:renderDash,work:renderWork,partners:renderPartners,trees:renderTrees,settings:renderSettings})[v](); }
 function refresh(){ const v=curView(); render(v); if(selected && v==="map" && $("#sitePanel").classList.contains("on")) openSite(selected,false); }
 
 document.addEventListener("click",e=>{
   if(e.target.id==="clearHere"){ e.preventDefault(); HERE=null; if(hereMarker&&map) map.removeLayer(hereMarker); renderMap(); return; }
   const un=e.target.closest("[data-unpick]"); if(un){ picked=picked.filter(x=>x!==un.dataset.unpick); drawChips(); return; }
+  const at=e.target.closest("[data-addtree]"); if(at){ startPlacing(at.dataset.addtree); return; }
+  const tsl=e.target.closest("[data-treesite]"); if(tsl){ e.preventDefault(); location.hash="trees"; setTimeout(()=>{ $("#tSite").value=tsl.dataset.treesite; renderTrees(); },0); return; }
   const nw=e.target.closest("[data-new]"); if(nw){ openForm(nw.dataset.new,null,nw.dataset.site); return; }
   const sl=e.target.closest("[data-site]"); if(sl){ e.preventDefault(); if(curView()!=="map") location.hash="map"; setTimeout(()=>openSite(sl.dataset.site),0); return; }
   const ed=e.target.closest("[data-edit]"); if(ed){ const r=store.data[ed.dataset.edit].find(x=>x.id===ed.dataset.id); if(r) openForm(ed.dataset.edit,r); return; }
@@ -726,12 +917,16 @@ document.addEventListener("click",e=>{
   const go=e.target.closest("[data-go]"); if(go){ location.hash=go.dataset.go; return; }
   const li=e.target.closest("#siteList li[data-id]"); if(li){ openSite(li.dataset.id); return; }
 });
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if($("#modal").classList.contains("on")) $("#modal").classList.remove("on"); else if(selected) closeSite(); }});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && placing){ stopPlacing(); return; } if(e.key==="Escape"){ if($("#modal").classList.contains("on")) $("#modal").classList.remove("on"); else if(selected) closeSite(); }});
 $("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") $("#modal").classList.remove("on"); });
 ["fSearch","fCat","fReg","fBy","fWard","fFlag"].forEach(id=>$("#"+id).addEventListener("input",renderMap));
 ["wSearch","wReg","wMonth","wSrc"].forEach(id=>$("#"+id).addEventListener("input",renderWork));
 $("#mMap").onclick=()=>setMapMode("map"); $("#mList").onclick=()=>setMapMode("list");
 $("#nearMe").onclick=nearMe;
+$("#placeGps").onclick=placeByGps; $("#placeCancel").onclick=stopPlacing;
+$("#treeToggle").addEventListener("change",drawTrees);
+["tSearch","tSite","tCond","tNeed"].forEach(id=>$("#"+id).addEventListener("input",renderTrees));
+$("#tExport").onclick=()=>exportTrees(treeRows());
 window.addEventListener("hashchange",route);
 window.addEventListener("resize",()=>{ if(map) map.invalidateSize(); });
 

@@ -1,8 +1,9 @@
 # CDOT Site Tracker
 
 A map-based tracker for CDOT's landscaped traffic-calming sites, malls and plazas, and fountains
-(716 sites across Regions 1, 2, 3, 5 and 6, plus the citywide fountain contract). It logs maintenance
-visits and community partners, and works on a desktop or a phone.
+(708 sites). Traffic calming and malls and plazas fall under the CLS (Comprehensive Landscape Services)
+contracts by region; fountains are a separate citywide contract. The app logs maintenance visits,
+community partners and a tree inventory for the malls and plazas, and works on a desktop or a phone.
 
 ## Files
 
@@ -45,10 +46,22 @@ invoice backup) or **Contractor schedule** (planned).
 
 | Contract | Contractor |
 |---|---|
-| Region 1 landscape | A Safe Haven |
-| Regions 2 and 6 landscape | Christy Webber |
-| Regions 3 and 5 landscape | Lizzette Medina |
-| Citywide fountains | Fountain Pros |
+| CLS Region 1 | A Safe Haven |
+| CLS Regions 2 and 6 | Christy Webber |
+| CLS Regions 3 and 5 | Lizzette Medina |
+| Citywide fountains (separate contract) | Fountain Pros |
+
+## Tree inventory (malls and plazas)
+
+Open a mall or plaza on the map and tap **Add tree**. Then either tap the tree on the map (switch the
+basemap to Satellite with the layers button) or stand at the trunk and tap **Use my GPS**. Each tree is
+numbered within its plaza (e.g. `MP-016-T01`) and records species, DBH, height, canopy spread,
+condition, risk, planting site, conflicts, work needed, pests and inspection date. Vacant planting
+sites and stumps can be recorded too. The **Trees** tab lists and filters every tree and exports the
+inventory to Excel.
+
+If you set up Supabase before the tree inventory was added, run `schema.sql` again once; it adds the
+`trees` table and leaves your other tables alone.
 
 ## Updating the site list
 
